@@ -26,7 +26,7 @@ const menuItems = [
   { icon: FileText, label: "Documents", href: "/admin/documents" },
   { icon: Users, label: "Users", href: "/admin/users" },
   { icon: BarChart3, label: "Reports", href: "/admin/reports" },
-  { icon: Activity, label: "Activity", href: "/admin/activity" },
+  { icon: Activity, label: "Activity", href: "/admin/activity", badge: "3" },
   { icon: Bell, label: "Notifications", href: "/admin/notifications" },
 ]
 

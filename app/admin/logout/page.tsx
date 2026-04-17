@@ -14,7 +14,7 @@ export default function LogoutPage() {
       <Sidebar />
 
       <main className="flex-1 p-4 lg:p-6 lg:ml-64">
-        <Header />
+        <Header title="Logout" description="Are you sure you want to logout?" />
 
         <div className="flex items-center justify-center min-h-[calc(100vh-100px)]">
           <Card className="p-8 max-w-md w-full text-center space-y-6 animate-fade-in">

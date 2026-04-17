@@ -14,9 +14,9 @@ export type FieldType =
 export interface WorkflowField {
   id: string
   type: FieldType
-  label: string
+  name: string
   required: boolean
-  order: number
+  order?: number
   options?: string[]
   placeholder?: string
   wordLimit?: number
@@ -30,8 +30,11 @@ export interface WorkflowStep {
   id: string
   name: string
   description?: string
-  order: number
-  enabled: boolean
+  order?: number
+  emailTrigger?: boolean
+  assignedRole?: string
+  
+  enabled?: boolean
   fields: WorkflowField[]
   deadline?: number // days
   roleAssignment?: string
@@ -47,8 +50,9 @@ export interface Workflow {
   status: 'active' | 'draft' | 'archived'
   steps: WorkflowStep[]
   createdAt: Date
-  updatedAt: Date
-  createdBy: string
+  updatedAt?: Date
+  createdBy?: string
+  candidateCount?: number
 }
 
 // Dummy workflow data
@@ -72,7 +76,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-001',
             type: 'text',
-            label: 'Full Name',
+            name: 'Full Name',
             required: true,
             order: 1,
             placeholder: 'John Doe',
@@ -80,7 +84,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-002',
             type: 'text',
-            label: 'Email',
+            name: 'Email',
             required: true,
             order: 2,
             placeholder: 'john@example.com',
@@ -88,7 +92,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-003',
             type: 'text',
-            label: 'Phone Number',
+            name: 'Phone Number',
             required: false,
             order: 3,
             placeholder: '+1 (555) 123-4567',
@@ -96,7 +100,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-004',
             type: 'select',
-            label: 'Industry',
+            name: 'Industry',
             required: true,
             order: 4,
             options: ['Technology', 'Finance', 'Healthcare', 'Retail', 'Other'],
@@ -117,7 +121,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-005',
             type: 'textarea',
-            label: 'Lead Description',
+            name: 'Lead Description',
             required: true,
             order: 1,
             wordLimit: 500,
@@ -126,7 +130,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-006',
             type: 'select',
-            label: 'Budget Range',
+            name: 'Budget Range',
             required: true,
             order: 2,
             options: ['$0-10k', '$10k-50k', '$50k-100k', '$100k+'],
@@ -134,7 +138,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-007',
             type: 'date',
-            label: 'Expected Decision Date',
+            name: 'Expected Decision Date',
             required: false,
             order: 3,
           },
@@ -154,7 +158,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-008',
             type: 'file',
-            label: 'Company Profile',
+            name: 'Company Profile',
             required: true,
             order: 1,
             fileTypes: ['pdf', 'doc', 'docx'],
@@ -163,7 +167,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-009',
             type: 'checkbox',
-            label: 'I confirm all information is accurate',
+            name: 'I confirm all information is accurate',
             required: true,
             order: 2,
           },
@@ -191,21 +195,21 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-010',
             type: 'text',
-            label: 'Candidate Name',
+            name: 'Candidate Name',
             required: true,
             order: 1,
           },
           {
             id: 'field-011',
             type: 'text',
-            label: 'Email',
+            name: 'Email',
             required: true,
             order: 2,
           },
           {
             id: 'field-012',
             type: 'file',
-            label: 'Resume',
+            name: 'Resume',
             required: true,
             order: 3,
             fileTypes: ['pdf'],
@@ -224,7 +228,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-013',
             type: 'textarea',
-            label: 'Interview Notes',
+            name: 'Interview Notes',
             required: true,
             order: 1,
             wordLimit: 300,
@@ -232,7 +236,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-014',
             type: 'select',
-            label: 'Assessment Score',
+            name: 'Assessment Score',
             required: true,
             order: 2,
             options: ['Poor', 'Fair', 'Good', 'Excellent'],
@@ -250,7 +254,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-015',
             type: 'textarea',
-            label: 'Technical Assessment',
+            name: 'Technical Assessment',
             required: true,
             order: 1,
             wordLimit: 500,
@@ -258,7 +262,7 @@ export const dummyWorkflows: Workflow[] = [
           {
             id: 'field-016',
             type: 'number',
-            label: 'Score',
+            name: 'Score',
             required: true,
             order: 2,
           },
