@@ -1,13 +1,16 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Mail, Bell } from "lucide-react"
+import { Search, Mail, Bell, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MobileNav } from "./mobile-nav"
 import { SearchModal } from "@/components/search/search-modal"
 import { NotificationsModal } from "@/components/notifications/notifications-modal"
+import { useSession } from "next-auth/react"
+import { useEffect } from "react"
+import { notificationService } from "@/lib/services/api.service"
 import type { ReactNode } from "react"
 
 interface HeaderProps {
@@ -17,8 +20,31 @@ interface HeaderProps {
 }
 
 export function Header({ title, description, actions }: HeaderProps) {
+  const { data: session, status } = useSession()
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
+  const [hasUnread, setHasUnread] = useState(false)
+
+  useEffect(() => {
+    const checkUnread = async () => {
+      try {
+        const notes = await notificationService.getAll()
+        setHasUnread(notes.some((n: any) => !n.isRead))
+      } catch (error) {
+        // Silent error
+      }
+    }
+    checkUnread()
+    
+    // Check every minute
+    const interval = setInterval(checkUnread, 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const user = session?.user as any
+  const fullName = user ? `${user.firstName || user.name} ${user.lastName || ''}`.trim() : "Loading..."
+  const userRole = user?.role || "USER"
+  const userImage = user?.image || user?.profileImage
 
   return (
     <header className="space-y-3 md:space-y-4 animate-slide-in-up">
@@ -56,18 +82,31 @@ export function Header({ title, description, actions }: HeaderProps) {
             onClick={() => setShowNotificationsModal(true)}
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-destructive rounded-full animate-pulse" />
+            {hasUnread && (
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-destructive rounded-full animate-pulse" />
+            )}
           </Button>
 
           <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-border">
-            <Avatar className="w-7 h-7 md:w-8 md:h-8 ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/40">
-              <AvatarImage src="/profile.jpg" alt="Jessin Sam" />
-              <AvatarFallback className="text-xs">JS</AvatarFallback>
-            </Avatar>
-            <div className="text-xs hidden sm:block">
-              <p className="font-semibold text-foreground">Jessin Sam</p>
-              <p className="text-muted-foreground text-[10px]">jessin@gmail.com</p>
-            </div>
+            {status === "loading" ? (
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            ) : (
+              <>
+                <Avatar className="w-7 h-7 md:w-8 md:h-8 ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/40">
+                  <AvatarImage src={userImage} alt={fullName} />
+                  <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
+                    {fullName.split(" ").map(n => n[0]).join("").toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="text-xs hidden sm:block">
+                  <p className="font-semibold text-foreground truncate max-w-[120px]">{fullName}</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                    <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-tight">{userRole}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -78,6 +117,9 @@ export function Header({ title, description, actions }: HeaderProps) {
       </div>
 
       {actions && <div className="flex flex-col sm:flex-row gap-2">{actions}</div>}
+      
+      {showSearchModal && <SearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />}
+      {showNotificationsModal && <NotificationsModal isOpen={showNotificationsModal} onClose={() => setShowNotificationsModal(false)} />}
     </header>
   )
 }

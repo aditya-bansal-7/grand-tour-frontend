@@ -1,186 +1,134 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { dummyWorkflows } from '@/lib/workflow-schema'
-import { workflowTemplates } from '@/lib/workflow-templates'
-import { Plus, Trash2, Edit2, Copy } from 'lucide-react'
+import { workflowService } from '@/lib/services/api.service'
+import { Edit2, Loader2, Settings } from 'lucide-react'
 import { WorkflowBuilder } from './workflow-builder'
+import { toast } from 'sonner'
 
 export function WorkflowsList() {
-  const [workflows, setWorkflows] = useState(dummyWorkflows)
-  const [selectedWorkflow, setSelectedWorkflow] = useState<string | null>(null)
+  const [workflow, setWorkflow] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [showBuilder, setShowBuilder] = useState(false)
-  const [showTemplates, setShowTemplates] = useState(false)
 
-  const handleDeleteWorkflow = (id: string) => {
-    if (confirm('Are you sure you want to delete this workflow?')) {
-      setWorkflows(workflows.filter((w) => w.id !== id))
+  useEffect(() => {
+    fetchWorkflow()
+  }, [])
+
+  const fetchWorkflow = async () => {
+    try {
+      setLoading(true)
+      const data = await workflowService.get()
+      setWorkflow(data)
+    } catch (error: any) {
+      toast.error('Failed to load workflow')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleUseTemplate = (template: typeof workflowTemplates[0]) => {
-    const newWorkflow = {
-      ...template,
-      id: `wf${Date.now()}`,
-      createdAt: new Date(),
-      status: 'draft' as const,
+  const handleSave = async (updated: any) => {
+    try {
+      const data = await workflowService.update(updated)
+      setWorkflow(data)
+      setShowBuilder(false)
+      toast.success('Workflow updated successfully')
+    } catch (error: any) {
+      toast.error('Failed to update workflow')
     }
-    setWorkflows([...workflows, newWorkflow])
-    setShowTemplates(false)
   }
 
-  if (showTemplates) {
+  if (loading) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">Choose a Template</h2>
-          <Button variant="outline" onClick={() => setShowTemplates(false)}>
-            Back
-          </Button>
-        </div>
-
-        <div className="grid gap-4">
-          {workflowTemplates.map((template) => (
-            <Card key={template.id} className="p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-lg text-foreground">{template.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-2">{template.description}</p>
-                  <div className="flex gap-4 mt-4">
-                    <span className="text-xs bg-secondary px-2.5 py-1 rounded-full text-foreground">
-                      {template.steps.length} step{template.steps.length !== 1 ? 's' : ''}
-                    </span>
-                    <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        template.status === 'active'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {template.status.charAt(0).toUpperCase() + template.status.slice(1)}
-                    </span>
-                  </div>
-                </div>
-                <Button
-                  onClick={() => handleUseTemplate(template)}
-                  className="gap-2 whitespace-nowrap"
-                >
-                  <Copy className="w-4 h-4" />
-                  Use Template
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
+      <div className="flex flex-col items-center justify-center p-12 gap-4">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-muted-foreground">Loading workflow configuration...</p>
       </div>
     )
   }
 
-  if (showBuilder && selectedWorkflow) {
-    const workflow = workflows.find((w) => w.id === selectedWorkflow)
-    if (workflow) {
-      return (
-        <WorkflowBuilder
-          workflow={workflow}
-          onSave={(updated) => {
-            setWorkflows(workflows.map((w) => (w.id === updated.id ? updated : w)))
-            setShowBuilder(false)
-            setSelectedWorkflow(null)
-          }}
-          onCancel={() => {
-            setShowBuilder(false)
-            setSelectedWorkflow(null)
-          }}
-        />
-      )
-    }
+  if (showBuilder && workflow) {
+    return (
+      <WorkflowBuilder
+        workflow={workflow}
+        onSave={handleSave}
+        onCancel={() => setShowBuilder(false)}
+      />
+    )
   }
+
+  if (!workflow) return null
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <div>
+          <h2 className="text-lg font-semibold text-foreground">Main Application Process</h2>
           <p className="text-sm text-muted-foreground">
-            {workflows.length} workflow{workflows.length !== 1 ? 's' : ''} created
+            Configure the steps and fields for the Grand Tour internship process.
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowTemplates(true)}
-            className="gap-2"
-          >
-            <Copy className="w-4 h-4" />
-            From Template
-          </Button>
-          <Button
-            onClick={() => {
-              setSelectedWorkflow(null)
-              setShowBuilder(true)
-            }}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            New Workflow
-          </Button>
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {workflows.map((workflow) => (
-          <Card key={workflow.id} className="p-4 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1">
-                <h3 className="font-semibold text-foreground">{workflow.name}</h3>
-                {workflow.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{workflow.description}</p>
-                )}
-                <div className="flex gap-4 mt-3">
-                  <span className="text-xs bg-secondary px-2.5 py-1 rounded-full text-foreground">
-                    {workflow.steps.length} step{workflow.steps.length !== 1 ? 's' : ''}
-                  </span>
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                      workflow.status === 'active'
-                        ? 'bg-green-100 text-green-700'
-                        : workflow.status === 'draft'
-                          ? 'bg-yellow-100 text-yellow-700'
-                          : 'bg-gray-100 text-gray-700'
-                    }`}
+      <Card className="p-6 border-l-4 border-l-primary">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <Settings className="w-5 h-5 text-primary" />
+              <h3 className="font-bold text-xl text-foreground">{workflow.name}</h3>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              {workflow.description || 'Manage the core steps for all internship applications.'}
+            </p>
+            
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Workflow Steps ({workflow.steps?.length || 0})
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {workflow.steps?.map((step: any, index: number) => (
+                  <div 
+                    key={step.id} 
+                    className="flex items-center gap-2 bg-secondary/50 px-3 py-1.5 rounded-lg border border-border"
                   >
-                    {workflow.status.charAt(0).toUpperCase() + workflow.status.slice(1)}
-                  </span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSelectedWorkflow(workflow.id)
-                    setShowBuilder(true)
-                  }}
-                  className="gap-1"
-                >
-                  <Edit2 className="w-3 h-3" />
-                  Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDeleteWorkflow(workflow.id)}
-                  className="gap-1 text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Delete
-                </Button>
+                    <span className="text-xs font-bold bg-primary text-primary-foreground w-5 h-5 rounded-full flex items-center justify-center">
+                      {index + 1}
+                    </span>
+                    <span className="text-sm font-medium">{step.name}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          </Card>
-        ))}
-      </div>
+
+            <div className="flex gap-4 mt-6">
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700 border border-green-200">
+                Active Process
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Last updated: {new Date(workflow.updatedAt).toLocaleDateString()}
+              </span>
+            </div>
+          </div>
+          
+          <Button
+            onClick={() => setShowBuilder(true)}
+            className="gap-2"
+          >
+            <Edit2 className="w-4 h-4" />
+            Configure Workflow
+          </Button>
+        </div>
+      </Card>
+
+      <Card className="p-6 bg-muted/30 border-dashed">
+        <h4 className="font-semibold text-sm mb-2 text-foreground">Global Workflow Note</h4>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Changes to this workflow will immediately affect all new applications. Existing applications 
+          will maintain their current step but follow the updated structure for subsequent stages.
+        </p>
+      </Card>
     </div>
   )
 }

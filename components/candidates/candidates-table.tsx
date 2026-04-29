@@ -1,20 +1,131 @@
 'use client'
 
-import { useState } from 'react'
-import { dummyCandidates, Candidate, CandidateStatus, PaymentStatus } from '@/lib/candidate-data'
+import { useState, useEffect } from 'react'
+import { Candidate, CandidateStatus, PaymentStatus } from '@/lib/candidate-data'
+import { applicationService, workflowService } from '@/lib/services/api.service'
+import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Eye, ArrowRight, MessageSquare, Check, X, ChevronRight, Phone, Mail } from 'lucide-react'
+import { Search, Eye, ArrowRight, MessageSquare, Check, X, Phone, Mail, Loader2 } from 'lucide-react'
 
 export function CandidatesTable() {
-  const [candidates, setCandidates] = useState<Candidate[]>(dummyCandidates)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [workflow, setWorkflow] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | CandidateStatus>('all')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [showNotes, setShowNotes] = useState(false)
   const [notes, setNotes] = useState('')
   const [showMoveStep, setShowMoveStep] = useState(false)
+
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [appData, wfData] = await Promise.all([
+        applicationService.getAll(),
+        workflowService.get()
+      ])
+      
+      setWorkflow(wfData)
+      
+      // Map backend data to frontend Candidate type
+      const mappedCandidates: Candidate[] = appData.map((app: any) => {
+        let status: CandidateStatus = 'pending'
+        if (app.status === 'ACCEPTED') status = 'approved'
+        if (app.status === 'REJECTED') status = 'rejected'
+
+        let currentStepName = 'Unknown'
+        if (wfData && wfData.steps) {
+          const step = wfData.steps.find((s: any) => s.id === app.currentStepId)
+          currentStepName = step ? step.name : app.status.replace(/_/g, ' ')
+        } else {
+          currentStepName = app.status.replace(/_/g, ' ')
+        }
+
+        return {
+          id: app.id,
+          name: `${app.user.firstName} ${app.user.lastName}`,
+          email: app.user.email,
+          phone: app.phone || 'N/A',
+          program: app.program || 'Internship Program',
+          currentStep: currentStepName,
+          currentStepId: app.currentStepId || '',
+          status,
+          paymentStatus: (app.paymentStatus?.toLowerCase() as PaymentStatus) || 'unpaid',
+          notes: app.notes || '',
+          createdAt: new Date(app.createdAt),
+          updatedAt: new Date(app.updatedAt),
+          attachments: app.resumeUrl ? [app.resumeUrl] : [],
+        }
+      })
+      setCandidates(mappedCandidates)
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStatusChange = async (id: string, newStatus: CandidateStatus) => {
+    try {
+      const backendStatus = newStatus === 'approved' ? 'ACCEPTED' : newStatus === 'rejected' ? 'REJECTED' : 'PENDING'
+      await applicationService.updateStatus(id, backendStatus)
+      setCandidates(
+        candidates.map((c) =>
+          c.id === id ? { ...c, status: newStatus, updatedAt: new Date() } : c
+        )
+      )
+      toast.success(`Candidate ${newStatus} successfully`)
+    } catch (error: any) {
+      toast.error(error.message)
+    }
+  }
+
+  const handleMoveStep = async (stepId: string, stepName: string) => {
+    if (selectedCandidate) {
+      try {
+        await applicationService.updateStep(selectedCandidate.id, stepId)
+        setCandidates(
+          candidates.map((c) =>
+            c.id === selectedCandidate.id
+              ? { ...c, currentStepId: stepId, currentStep: stepName, updatedAt: new Date() }
+              : c
+          )
+        )
+        setShowMoveStep(false)
+        setSelectedCandidate(null)
+        toast.success(`Moved to ${stepName}`)
+      } catch (error: any) {
+        toast.error(error.message)
+      }
+    }
+  }
+
+  const handleAddNotes = async () => {
+    if (selectedCandidate && notes) {
+      try {
+        await applicationService.updateNotes(selectedCandidate.id, notes)
+        setCandidates(
+          candidates.map((c) =>
+            c.id === selectedCandidate.id
+              ? { ...c, notes: notes, updatedAt: new Date() }
+              : c
+          )
+        )
+        setNotes('')
+        setShowNotes(false)
+        toast.success('Notes saved successfully')
+      } catch (error: any) {
+        toast.error(error.message)
+      }
+    }
+  }
 
   const filteredCandidates = candidates.filter((c) => {
     const matchesSearch =
@@ -48,41 +159,8 @@ export function CandidatesTable() {
         return 'bg-orange-50 text-orange-700'
       case 'overdue':
         return 'bg-red-50 text-red-700'
-    }
-  }
-
-  const handleStatusChange = (id: string, newStatus: CandidateStatus) => {
-    setCandidates(
-      candidates.map((c) =>
-        c.id === id ? { ...c, status: newStatus, updatedAt: new Date() } : c
-      )
-    )
-  }
-
-  const handleMoveStep = (newStep: string) => {
-    if (selectedCandidate) {
-      setCandidates(
-        candidates.map((c) =>
-          c.id === selectedCandidate.id
-            ? { ...c, currentStep: newStep, updatedAt: new Date() }
-            : c
-        )
-      )
-      setShowMoveStep(false)
-    }
-  }
-
-  const handleAddNotes = () => {
-    if (selectedCandidate && notes) {
-      setCandidates(
-        candidates.map((c) =>
-          c.id === selectedCandidate.id
-            ? { ...c, notes: notes, updatedAt: new Date() }
-            : c
-        )
-      )
-      setNotes('')
-      setShowNotes(false)
+      default:
+        return 'bg-gray-50 text-gray-700'
     }
   }
 
@@ -213,23 +291,27 @@ export function CandidatesTable() {
 
   // Modal: Move to Step
   if (selectedCandidate && showMoveStep) {
-    const steps = ['Application Review', 'Initial Screening', 'Technical Interview', 'HR Round', 'Offer Stage']
+    const steps = workflow?.steps || []
     return (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
         <Card className="w-full max-w-md p-6">
           <h2 className="text-xl font-semibold text-foreground mb-4">Move to Step</h2>
           <div className="space-y-2 mb-4">
-            {steps.map((step) => (
-              <Button
-                key={step}
-                variant={selectedCandidate.currentStep === step ? 'default' : 'outline'}
-                className="w-full justify-start gap-2"
-                onClick={() => handleMoveStep(step)}
-              >
-                {selectedCandidate.currentStep === step && <Check className="w-4 h-4" />}
-                {step}
-              </Button>
-            ))}
+            {steps.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No workflow steps defined.</p>
+            ) : (
+              steps.map((step: any) => (
+                <Button
+                  key={step.id}
+                  variant={selectedCandidate.currentStepId === step.id ? 'default' : 'outline'}
+                  className="w-full justify-start gap-2"
+                  onClick={() => handleMoveStep(step.id, step.name)}
+                >
+                  {selectedCandidate.currentStepId === step.id && <Check className="w-4 h-4" />}
+                  {step.name}
+                </Button>
+              ))
+            )}
           </div>
           <Button variant="outline" onClick={() => setShowMoveStep(false)} className="w-full">
             Cancel
@@ -271,7 +353,12 @@ export function CandidatesTable() {
       </Card>
 
       <div className="grid gap-3">
-        {filteredCandidates.length === 0 ? (
+        {loading ? (
+          <Card className="p-12 flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-muted-foreground animate-pulse">Loading candidates...</p>
+          </Card>
+        ) : filteredCandidates.length === 0 ? (
           <Card className="p-8 text-center">
             <p className="text-muted-foreground">No candidates found matching your search.</p>
           </Card>
@@ -279,7 +366,6 @@ export function CandidatesTable() {
           filteredCandidates.map((candidate) => (
             <Card key={candidate.id} className="p-4 hover:shadow-md transition-shadow">
               <div className="space-y-3">
-                {/* Header row */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
                     <h3 className="font-semibold text-foreground">{candidate.name}</h3>
@@ -331,7 +417,6 @@ export function CandidatesTable() {
                   </div>
                 </div>
 
-                {/* Details row */}
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
                   <div>
                     <p className="text-muted-foreground mb-1">Program</p>
@@ -357,21 +442,8 @@ export function CandidatesTable() {
                         candidate.paymentStatus.slice(1).replace(/_/g, ' ')}
                     </span>
                   </div>
-
-                  {candidate.interviewDate && (
-                    <div>
-                      <p className="text-muted-foreground mb-1">Interview</p>
-                      <p className="font-medium text-foreground">
-                        {candidate.interviewDate.toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Action row */}
                 <div className="flex gap-2 pt-2 border-t border-border">
                   <Button 
                     variant="ghost" 

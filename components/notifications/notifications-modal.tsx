@@ -3,80 +3,31 @@
 import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Bell, Check, Archive, Trash2, X, Filter } from 'lucide-react'
+import { Bell, Check, Archive, Trash2, X, Filter, Loader2, Info, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react'
+import { notificationService } from '@/lib/services/api.service'
+import { toast } from 'sonner'
 
 interface Notification {
   id: string
   title: string
   message: string
-  type: 'interview' | 'candidate' | 'document' | 'workflow' | 'system'
-  timestamp: Date
-  read: boolean
-  actionUrl?: string
+  type: string // e.g., "INFO", "SUCCESS", "WARNING", "ERROR"
+  createdAt: string
+  isRead: boolean
 }
 
-const notificationSamples: Notification[] = [
-  {
-    id: '1',
-    title: 'Interview Scheduled',
-    message: 'John Smith has been scheduled for a technical interview on 2024-04-20 at 2:00 PM',
-    type: 'interview',
-    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-    read: false,
-    actionUrl: '/interviews',
-  },
-  {
-    id: '2',
-    title: 'Candidate Applied',
-    message: 'Sarah Johnson applied for the Product Manager position',
-    type: 'candidate',
-    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000),
-    read: false,
-    actionUrl: '/candidates',
-  },
-  {
-    id: '3',
-    title: 'Document Uploaded',
-    message: 'Resume received for candidate: Emma Davis',
-    type: 'document',
-    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000),
-    read: false,
-    actionUrl: '/documents',
-  },
-  {
-    id: '4',
-    title: 'Workflow Completed',
-    message: 'Sales Process workflow has been completed for Michael Brown',
-    type: 'workflow',
-    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    read: true,
-    actionUrl: '/workflows',
-  },
-  {
-    id: '5',
-    title: 'System Update',
-    message: 'CRM system maintenance scheduled for tomorrow at 2:00 AM',
-    type: 'system',
-    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    read: true,
-  },
-  {
-    id: '6',
-    title: 'Interview Reminder',
-    message: 'Reminder: Interview with Lisa Chen in 2 hours',
-    type: 'interview',
-    timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
-    read: true,
-    actionUrl: '/interviews',
-  },
-]
+const typeStyles: Record<string, string> = {
+  INFO: 'bg-blue-50 border-l-4 border-blue-500',
+  SUCCESS: 'bg-green-50 border-l-4 border-green-500',
+  WARNING: 'bg-yellow-50 border-l-4 border-yellow-500',
+  ERROR: 'bg-red-50 border-l-4 border-red-500',
+}
 
-const typeStyles = {
-  interview: 'bg-blue-50 border-l-4 border-blue-500',
-  candidate: 'bg-green-50 border-l-4 border-green-500',
-  document: 'bg-purple-50 border-l-4 border-purple-500',
-  workflow: 'bg-orange-50 border-l-4 border-orange-500',
-  system: 'bg-gray-50 border-l-4 border-gray-500',
+const typeIcons: Record<string, any> = {
+  INFO: <Info className="w-4 h-4 text-blue-500" />,
+  SUCCESS: <CheckCircle2 className="w-4 h-4 text-green-500" />,
+  WARNING: <AlertTriangle className="w-4 h-4 text-yellow-500" />,
+  ERROR: <AlertCircle className="w-4 h-4 text-red-500" />,
 }
 
 interface NotificationsModalProps {
@@ -85,43 +36,58 @@ interface NotificationsModalProps {
 }
 
 export function NotificationsModal({ isOpen, onClose }: NotificationsModalProps) {
-  const [notifications, setNotifications] = useState<Notification[]>(notificationSamples)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
   const [filterUnread, setFilterUnread] = useState(false)
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
+    if (isOpen) {
+      fetchNotifications()
     }
+  }, [isOpen])
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      const data = await notificationService.getAll()
+      setNotifications(data)
+    } catch (error: any) {
+      toast.error('Failed to load notifications')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredNotifications = filterUnread
-    ? notifications.filter((n) => !n.read)
+    ? notifications.filter((n) => !n.isRead)
     : notifications
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const unreadCount = notifications.filter((n) => !n.isRead).length
 
-  const handleMarkRead = (id: string) => {
-    setNotifications(
-      notifications.map((n) => (n.id === id ? { ...n, read: true } : n))
-    )
-  }
-
-  const handleArchive = (id: string) => {
-    setNotifications(notifications.filter((n) => n.id !== id))
-  }
-
-  const handleClearAll = () => {
-    if (confirm('Are you sure you want to clear all notifications?')) {
-      setNotifications([])
+  const handleMarkRead = async (id: string) => {
+    try {
+      await notificationService.markRead(id)
+      setNotifications(
+        notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+      )
+    } catch (error) {
+      toast.error('Failed to mark as read')
     }
   }
 
-  const formatTime = (date: Date) => {
+  const handleClearAll = async () => {
+    if (confirm('Mark all as read?')) {
+      try {
+        await notificationService.markAllRead()
+        setNotifications(notifications.map(n => ({ ...n, isRead: true })))
+      } catch (error) {
+        toast.error('Failed to clear notifications')
+      }
+    }
+  }
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
@@ -138,99 +104,103 @@ export function NotificationsModal({ isOpen, onClose }: NotificationsModalProps)
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/50 p-4">
-      <Card className="w-full max-w-md h-[calc(100vh-100px)] flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-end bg-black/30 backdrop-blur-sm p-4 transition-all animate-in fade-in duration-300">
+      <Card className="w-full max-w-md h-[calc(100vh-100px)] flex flex-col shadow-2xl border-border animate-in slide-in-from-right-8 duration-300">
         {/* Header */}
-        <div className="p-4 border-b border-border flex items-center justify-between">
+        <div className="p-4 border-b border-border flex items-center justify-between bg-card rounded-t-xl">
           <div>
-            <h2 className="font-semibold text-foreground">Notifications</h2>
-            {unreadCount > 0 && (
-              <p className="text-xs text-muted-foreground mt-1">
-                {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}
-              </p>
-            )}
+            <h2 className="font-bold text-foreground flex items-center gap-2">
+              Notifications
+              {unreadCount > 0 && (
+                <span className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                  {unreadCount}
+                </span>
+              )}
+            </h2>
+            <p className="text-[10px] text-muted-foreground mt-0.5 uppercase tracking-wider font-medium">Real-time alerts</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-secondary">
             <X className="w-4 h-4" />
           </Button>
         </div>
 
         {/* Filter */}
-        <div className="p-3 border-b border-border flex gap-2">
+        <div className="p-3 border-b border-border flex gap-2 bg-secondary/10">
           <Button
             variant={filterUnread ? 'default' : 'outline'}
             size="sm"
             onClick={() => setFilterUnread(!filterUnread)}
-            className="gap-1 text-xs"
+            className="gap-1.5 text-xs h-8"
           >
-            <Filter className="w-3 h-3" />
-            Unread
+            <Filter className="w-3.5 h-3.5" />
+            {filterUnread ? 'Showing Unread' : 'Filter Unread'}
           </Button>
-          {notifications.length > 0 && (
+          {unreadCount > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={handleClearAll}
-              className="text-xs ml-auto"
+              className="text-xs ml-auto h-8 hover:bg-primary/10 hover:text-primary transition-colors"
             >
-              Clear All
+              Mark all read
             </Button>
           )}
         </div>
 
         {/* Notifications List */}
-        <div className="flex-1 overflow-y-auto">
-          {filteredNotifications.length === 0 ? (
-            <div className="p-8 text-center">
-              <Bell className="w-12 h-12 mx-auto text-muted-foreground opacity-30 mb-4" />
-              <p className="text-muted-foreground">
-                {filterUnread ? 'No unread notifications' : 'No notifications'}
+        <div className="flex-1 overflow-y-auto bg-card/50">
+          {loading ? (
+            <div className="p-12 text-center flex flex-col items-center gap-3">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <p className="text-xs text-muted-foreground animate-pulse">Syncing notifications...</p>
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="p-12 text-center">
+              <div className="w-16 h-16 bg-secondary/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Bell className="w-8 h-8 text-muted-foreground opacity-30" />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                {filterUnread ? 'All caught up!' : 'No notifications yet'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {filterUnread ? 'You have read all your notifications.' : 'We will alert you when something important happens.'}
               </p>
             </div>
           ) : (
-            <div className="space-y-2 p-3">
+            <div className="space-y-3 p-4">
               {filteredNotifications.map((notification) => {
-                const styleClass = typeStyles[notification.type]
+                const styleClass = typeStyles[notification.type] || typeStyles.INFO
+                const icon = typeIcons[notification.type] || typeIcons.INFO
                 return (
-                  <div key={notification.id} className={`p-3 rounded-lg ${styleClass}`}>
-                    <div className="flex items-start justify-between gap-2 mb-2">
+                  <div 
+                    key={notification.id} 
+                    className={`p-3 rounded-xl border border-transparent transition-all hover:shadow-sm ${styleClass} ${notification.isRead ? 'opacity-70 border-border bg-card' : 'shadow-md border-primary/10'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="mt-0.5">{icon}</div>
                       <div className="flex-1">
-                        <p className="font-medium text-sm text-foreground">
+                        <p className={`font-semibold text-sm ${notification.isRead ? 'text-muted-foreground' : 'text-foreground'}`}>
                           {notification.title}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {formatTime(notification.timestamp)}
-                        </p>
+                        <div className="flex items-center justify-between mt-3">
+                          <p className="text-[10px] font-medium text-muted-foreground/60">
+                            {formatTime(notification.createdAt)}
+                          </p>
+                          {!notification.isRead && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleMarkRead(notification.id)}
+                              className="h-6 text-[10px] font-bold uppercase tracking-wider text-primary hover:bg-primary/10 px-2"
+                            >
+                              Mark as read
+                            </Button>
+                          )}
+                        </div>
                       </div>
-
-                      {!notification.read && (
-                        <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
-                      )}
-                    </div>
-
-                    <div className="flex gap-1 mt-2">
-                      {!notification.read && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleMarkRead(notification.id)}
-                          className="gap-1 text-xs h-7"
-                        >
-                          <Check className="w-3 h-3" />
-                          Read
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleArchive(notification.id)}
-                        className="gap-1 text-xs h-7 ml-auto"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
                     </div>
                   </div>
                 )
@@ -240,13 +210,11 @@ export function NotificationsModal({ isOpen, onClose }: NotificationsModalProps)
         </div>
 
         {/* Footer */}
-        {notifications.length > 0 && (
-          <div className="p-3 border-t border-border text-center">
-            <p className="text-xs text-muted-foreground">
-              Showing {filteredNotifications.length} of {notifications.length}
-            </p>
-          </div>
-        )}
+        <div className="p-3 border-t border-border text-center bg-card rounded-b-xl">
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+            {notifications.length} Total Notifications
+          </p>
+        </div>
       </Card>
     </div>
   )

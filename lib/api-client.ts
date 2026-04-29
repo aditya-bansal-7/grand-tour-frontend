@@ -1,0 +1,43 @@
+import axios from 'axios';
+import { getSession } from 'next-auth/react';
+
+const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+const apiClient = axios.create({
+  baseURL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Request Interceptor to add Auth Token
+apiClient.interceptors.request.use(
+  async (config) => {
+    const session = await getSession();
+    if (session?.backendToken) {
+      config.headers.Authorization = `Bearer ${session.backendToken}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response Interceptor for Error Handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = error.response?.data?.message || error.message || 'An unexpected error occurred';
+    
+    // Auto logout if unauthorized (401)
+    if (error.response?.status === 401) {
+      // In a real app, you might want to redirect to login
+      // window.location.href = '/';
+    }
+    
+    return Promise.reject(new Error(message));
+  }
+);
+
+export default apiClient;

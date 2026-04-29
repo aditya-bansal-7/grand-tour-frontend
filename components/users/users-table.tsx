@@ -1,17 +1,128 @@
 'use client'
 
-import { useState } from 'react'
-import { dummyUsers, User, UserRole, rolePermissions } from '@/lib/user-data'
+import { useState, useEffect } from 'react'
+import { User, UserRole, rolePermissions } from '@/lib/user-data'
+import { userService } from '@/lib/services/api.service'
+import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Plus, Trash2, Shield, AlertCircle } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Search, Plus, Trash2, Shield, AlertCircle, Loader2 } from 'lucide-react'
 
 export function UsersTable() {
-  const [users, setUsers] = useState<User[]>(dummyUsers)
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState<'all' | UserRole>('all')
   const [showPermissions, setShowPermissions] = useState<string | null>(null)
+  
+  // Add user form state
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [newUser, setNewUser] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    role: 'team_member' as UserRole
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const data = await userService.getAll()
+      // Map backend data to frontend User type
+      const mappedUsers: User[] = data.map((u: any) => {
+        const normalizedRole = u.role.toLowerCase() as UserRole;
+        // Fallback for roles not in frontend enum (like STUDENT or TEAM)
+        const role = ['super_admin', 'admin', 'team_member', 'marketing', 'hr'].includes(normalizedRole)
+          ? normalizedRole
+          : 'team_member';
+
+        return {
+          id: u.id,
+          name: `${u.firstName} ${u.lastName}`,
+          email: u.email,
+          role: role,
+          status: 'active',
+          joinDate: new Date(u.createdAt),
+          avatar: u.profileImage,
+        };
+      })
+      setUsers(mappedUsers)
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      setIsSubmitting(true)
+      const data = await userService.create({
+        ...newUser,
+        role: newUser.role.toUpperCase()
+      })
+      
+      const mappedNewUser: User = {
+        id: data.id,
+        name: `${data.firstName} ${data.lastName}`,
+        email: data.email,
+        role: data.role.toLowerCase() === 'admin' ? 'admin' : 'team_member',
+        status: 'active',
+        joinDate: new Date(data.createdAt),
+      }
+      
+      setUsers([mappedNewUser, ...users])
+      setIsAddOpen(false)
+      setNewUser({ firstName: '', lastName: '', email: '', password: '', role: 'team_member' })
+      toast.success('User added successfully')
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeleteUser = async (id: string) => {
+    if (confirm('Are you sure you want to delete this user?')) {
+      try {
+        await userService.delete(id)
+        setUsers(users.filter((u) => u.id !== id))
+        toast.success('User deleted successfully')
+      } catch (error: any) {
+        toast.error(error.message)
+      }
+    }
+  }
+
+  const handleToggleStatus = (id: string) => {
+    // Backend doesn't have status yet, just toggle local state for UI
+    setUsers(
+      users.map((u) =>
+        u.id === id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u
+      )
+    )
+    toast.info('Status toggle is simulated for now')
+  }
+
+  const roles: UserRole[] = ['super_admin', 'admin', 'team_member', 'marketing', 'hr']
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -22,22 +133,6 @@ export function UsersTable() {
 
     return matchesSearch && matchesRole
   })
-
-  const handleDeleteUser = (id: string) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter((u) => u.id !== id))
-    }
-  }
-
-  const handleToggleStatus = (id: string) => {
-    setUsers(
-      users.map((u) =>
-        u.id === id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u
-      )
-    )
-  }
-
-  const roles: UserRole[] = ['super_admin', 'admin', 'team_member', 'marketing', 'hr']
 
   return (
     <div className="space-y-4">
@@ -66,10 +161,95 @@ export function UsersTable() {
             ))}
           </select>
 
-          <Button className="gap-2" size="sm">
-            <Plus className="w-4 h-4" />
-            Add User
-          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2" size="sm">
+                <Plus className="w-4 h-4" />
+                Add User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New User</DialogTitle>
+                <DialogDescription>
+                  Create a new team member with specific permissions.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleAddUser} className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      placeholder="John"
+                      value={newUser.firstName}
+                      onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Doe"
+                      value={newUser.lastName}
+                      onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <select
+                    id="role"
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
+                    className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background text-foreground"
+                  >
+                    {roles.map((role) => (
+                      <option key={role} value={role}>
+                        {rolePermissions[role].name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <DialogFooter className="pt-4">
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      'Create User'
+                    )}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
 
           <p className="text-sm text-muted-foreground whitespace-nowrap">
             {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
@@ -78,7 +258,12 @@ export function UsersTable() {
       </Card>
 
       <div className="space-y-3">
-        {filteredUsers.length === 0 ? (
+        {loading ? (
+          <Card className="p-12 flex flex-col items-center justify-center gap-4">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            <p className="text-muted-foreground animate-pulse">Loading users...</p>
+          </Card>
+        ) : filteredUsers.length === 0 ? (
           <Card className="p-8 text-center">
             <p className="text-muted-foreground">No users found matching your search.</p>
           </Card>

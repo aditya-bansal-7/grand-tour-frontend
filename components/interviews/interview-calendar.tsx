@@ -1,15 +1,44 @@
 'use client'
 
-import { useState } from 'react'
-import { dummyInterviews, Interview, InterviewStatus } from '@/lib/interview-data'
+import { useState, useEffect } from 'react'
+import { Interview, InterviewStatus } from '@/lib/interview-data'
+import { interviewService } from '@/lib/services/api.service'
+import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Calendar, Clock, MapPin, Loader2 } from 'lucide-react'
 
 export function InterviewCalendar() {
-  const [interviews, setInterviews] = useState<Interview[]>(dummyInterviews)
-  const [currentDate, setCurrentDate] = useState(new Date(2024, 3, 1))
+  const [interviews, setInterviews] = useState<Interview[]>([])
+  const [loading, setLoading] = useState(true)
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<'month' | 'week' | 'list'>('list')
+
+  useEffect(() => {
+    fetchInterviews()
+  }, [])
+
+  const fetchInterviews = async () => {
+    try {
+      setLoading(true)
+      const data = await interviewService.getAll()
+      // Map backend data to frontend Interview type
+      const mappedInterviews: Interview[] = data.map((int: any) => ({
+        id: int.id,
+        candidateName: `${int.application.user.firstName} ${int.application.user.lastName}`,
+        type: int.notes || 'Technical Interview',
+        scheduledDate: new Date(int.scheduledAt),
+        location: int.locationUrl || 'Remote',
+        status: 'pending', // Default for now
+        interviewerName: `${int.interviewer.firstName} ${int.interviewer.lastName}`,
+      }))
+      setInterviews(mappedInterviews)
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate()
@@ -33,7 +62,6 @@ export function InterviewCalendar() {
   }
 
   const upcomingInterviews = interviews
-    .filter((i) => i.status === 'pending' || i.status === 'rescheduled')
     .sort((a, b) => a.scheduledDate.getTime() - b.scheduledDate.getTime())
     .slice(0, 10)
 
@@ -90,7 +118,12 @@ export function InterviewCalendar() {
       {viewMode === 'list' && (
         <div className="space-y-3">
           <h3 className="font-semibold text-foreground">Upcoming Interviews</h3>
-          {upcomingInterviews.length === 0 ? (
+          {loading ? (
+            <Card className="p-12 flex flex-col items-center justify-center gap-4">
+              <Loader2 className="w-8 h-8 text-primary animate-spin" />
+              <p className="text-muted-foreground animate-pulse">Loading interviews...</p>
+            </Card>
+          ) : upcomingInterviews.length === 0 ? (
             <Card className="p-6 text-center text-muted-foreground">No upcoming interviews scheduled</Card>
           ) : (
             upcomingInterviews.map((interview) => (
