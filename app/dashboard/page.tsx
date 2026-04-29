@@ -1,183 +1,179 @@
-"use client";
+'use client'
 
-import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import Image from "next/image";
-import { useState } from "react";
-import UploadPopup from "@/components/UploadPopup";
+import { StudentLayout } from '@/components/student/student-layout'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { dummyStudentProfile, dummyApplicationData } from '@/lib/student-profile'
+import { getWorkflowSteps } from '@/lib/student-workflow'
+import Link from 'next/link'
+import { AlertCircle, CheckCircle, Clock, Zap, ArrowRight, FileText, Calendar, HelpCircle } from 'lucide-react'
 
-export default function Dashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
+export default function StudentDashboard() {
+  const steps = getWorkflowSteps(dummyStudentProfile.currentWorkflowStep as any)
+  const completedSteps = steps.filter(s => s.completed)
+  const currentStep = steps.find(s => s.current)
+  const progressPercent = Math.round((completedSteps.length / steps.length) * 100)
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/");
-    }
-  }, [status, router]);
+  const notifications = [
+    { id: 1, type: 'info', message: 'Your interview is scheduled on 20th April at 2:00 PM', icon: Clock },
+    { id: 2, type: 'warning', message: 'Sponsor ITR document needs verification', icon: AlertCircle },
+    { id: 3, type: 'success', message: 'Your documents have been approved', icon: CheckCircle },
+  ]
 
-  if (status === "loading") {
-    return (
-      <div className="flex flex-1 min-h-screen items-center justify-center bg-slate-950">
-        <div className="w-10 h-10 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!session) return null;
-
-  const user = session.user;
-  const initials = user?.name
-    ? user.name
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "?";
+  const timeline = [
+    { date: '10 Apr', event: 'Application Submitted', status: 'completed' },
+    { date: '11 Apr', event: 'Application Verified', status: 'completed' },
+    { date: '12 Apr', event: 'Documents Uploaded', status: 'completed' },
+    { date: '13 Apr', event: 'Interview Scheduled', status: 'completed' },
+    { date: '20 Apr', event: 'Interview - Pending', status: 'pending' },
+    { date: 'TBD', event: 'Selection Result', status: 'upcoming' },
+  ]
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-white">
-      {/* Top Nav */}
-      <header className="flex items-center justify-between border-b border-white/10 bg-slate-900/60 backdrop-blur-sm px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+    <StudentLayout currentStep={dummyStudentProfile.currentWorkflowStep}>
+      <div className="space-y-6 max-w-6xl">
+        {/* Welcome Card */}
+        <Card className="bg-gradient-to-br from-primary/10 via-accent/5 to-transparent border-primary/15 p-6 md:p-8">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl md:text-4xl font-bold text-foreground">Welcome back, {dummyStudentProfile.name.split(' ')[0]}!</h1>
+              <p className="text-muted-foreground max-w-2xl">You&apos;re {progressPercent}% through your internship onboarding journey. Keep up the great work!</p>
+            </div>
+            <Zap className="w-8 h-8 text-primary flex-shrink-0 hidden md:block" />
           </div>
-          <span className="font-semibold text-sm tracking-tight">Grand Tour</span>
+        </Card>
+
+        {/* Progress Overview */}
+        <div className="grid md:grid-cols-3 gap-4">
+          <Card className="p-6 hover:shadow-md transition-shadow border-success/20">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">Overall Progress</span>
+                <CheckCircle className="w-5 h-5 text-success" />
+              </div>
+              <div>
+                <div className="text-4xl font-bold text-primary mb-2">{progressPercent}%</div>
+                <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                  <div className="bg-gradient-to-r from-primary to-accent h-full transition-all" style={{ width: `${progressPercent}%` }} />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{completedSteps.length} of {steps.length} steps completed</p>
+            </div>
+          </Card>
+
+          <Card className="p-6 hover:shadow-md transition-shadow border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">Current Step</span>
+                <ArrowRight className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <div className="text-lg font-bold text-foreground">{currentStep?.title}</div>
+                <p className="text-xs text-muted-foreground mt-1">{currentStep?.description}</p>
+              </div>
+              <Link href={`/student/${currentStep?.id}`} className="block">
+                <Button size="sm" className="w-full">Continue Step</Button>
+              </Link>
+            </div>
+          </Card>
+
+          <Card className="p-6 hover:shadow-md transition-shadow border-warning/20">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-muted-foreground">Pending Actions</span>
+                <AlertCircle className="w-5 h-5 text-warning" />
+              </div>
+              <div className="text-4xl font-bold text-warning">2</div>
+              <p className="text-xs text-muted-foreground">Documents & interview prep required</p>
+            </div>
+          </Card>
         </div>
 
-        {/* Sign Out */}
-        <button
-          id="sign-out-btn"
-          onClick={() => signOut({ callbackUrl: "/" })}
-          className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition-all hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-950"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-            />
-          </svg>
-          Sign out
-        </button>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-16 relative overflow-hidden">
-        {/* Background blobs */}
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-violet-600/20 rounded-full blur-3xl" />
-
-        {/* Welcome card */}
-        <div className="relative z-10 flex flex-col items-center gap-6 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-xl px-10 py-12 shadow-2xl text-center w-full max-w-md">
-          {/* Avatar */}
-          <div className="relative">
-            {user?.image ? (
-              <Image
-                src={user.image}
-                alt={user.name ?? "User avatar"}
-                width={80}
-                height={80}
-                className="rounded-full ring-4 ring-indigo-500/40 shadow-lg"
-              />
-            ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-violet-600 ring-4 ring-indigo-500/40 text-2xl font-bold">
-                {initials}
-              </div>
-            )}
-            {/* Online dot */}
-            <span className="absolute bottom-1 right-1 h-4 w-4 rounded-full bg-emerald-400 ring-2 ring-slate-950" />
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Notifications */}
+          <div className="lg:col-span-2 space-y-4">
+            <h2 className="text-lg font-semibold">Important Notifications</h2>
+            {notifications.map((notif) => {
+              const Icon = notif.icon
+              return (
+                <Card key={notif.id} className="p-4 border-l-4 border-l-primary">
+                  <div className="flex items-start gap-3">
+                    <Icon className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-foreground">{notif.message}</p>
+                  </div>
+                </Card>
+              )
+            })}
           </div>
 
-          {/* User info */}
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold tracking-tight text-white">
-              {user?.name ?? "Welcome!"}
-            </h1>
-            <p className="text-sm text-slate-400">{user?.email}</p>
+          {/* Quick Links */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold">Quick Actions</h2>
+            <Card className="p-4 space-y-2">
+              <Link href="/student/application" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+                  <FileText className="w-4 h-4" />
+                  View Application
+                </Button>
+              </Link>
+              <Link href="/student/documents" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+                  <FileText className="w-4 h-4" />
+                  Upload Documents
+                </Button>
+              </Link>
+              <Link href="/student/interview" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+                  <Calendar className="w-4 h-4" />
+                  Book Interview
+                </Button>
+              </Link>
+              <Link href="/student/faq" className="block">
+                <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+                  <HelpCircle className="w-4 h-4" />
+                  View FAQ
+                </Button>
+              </Link>
+            </Card>
           </div>
+        </div>
 
-          {/* Divider */}
-          <div className="w-full h-px bg-white/10" />
-
-          {/* Stats row */}
-          <div className="grid grid-cols-3 w-full gap-4">
-            {[
-              { label: "Trips", value: "0" },
-              { label: "Reviews", value: "0" },
-              { label: "Photos", value: "0" },
-            ].map(({ label, value }) => (
-              <div key={label} className="flex flex-col items-center gap-1">
-                <span className="text-xl font-bold text-white">{value}</span>
-                <span className="text-xs text-slate-500">{label}</span>
+        {/* Timeline */}
+        <Card className="p-6 md:p-8">
+          <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+            <span>Your Journey</span>
+            <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full font-medium">{completedSteps.length} Steps Done</span>
+          </h2>
+          <div className="space-y-4">
+            {timeline.map((item, index) => (
+              <div key={index} className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${
+                    item.status === 'completed' 
+                      ? 'bg-success border-success shadow-sm shadow-success/30' 
+                      : item.status === 'pending'
+                      ? 'bg-primary border-primary'
+                      : 'bg-muted border-muted'
+                  }`} />
+                  {index < timeline.length - 1 && (
+                    <div className={`w-0.5 h-14 my-2 ${
+                      item.status === 'completed' ? 'bg-success/30' : 'bg-border'
+                    }`} />
+                  )}
+                </div>
+                <div className="pb-4 pt-0.5">
+                  <p className={`text-sm font-semibold ${
+                    item.status === 'completed' ? 'text-foreground' : 'text-muted-foreground'
+                  }`}>
+                    {item.event}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-medium">{item.date}</p>
+                </div>
               </div>
             ))}
           </div>
-
-          <button
-            onClick={() => setIsUploadOpen(true)}
-            className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 px-4 py-3 text-sm font-medium text-indigo-400 hover:bg-indigo-500/20 transition-all duration-300"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Upload New Media
-          </button>
-        </div>
-
-        {/* Upload Popup */}
-        <UploadPopup 
-          isOpen={isUploadOpen}
-          onClose={() => setIsUploadOpen(false)}
-          token={session.backendToken as string}
-          onUploadComplete={(data) => {
-            console.log("Upload successful:", data);
-          }}
-        />
-
-        {/* Info pills */}
-        <div className="relative z-10 flex flex-wrap justify-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-            Session Active
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-            Authenticated via Google
-          </span>
-        </div>
-      </main>
-    </div>
-  );
+        </Card>
+      </div>
+    </StudentLayout>
+  )
 }
