@@ -1,11 +1,55 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+        isRegister: { type: "boolean" }, // Hidden field to distinguish login/register
+        firstName: { type: "text" },
+        lastName: { type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        const endpoint = credentials.isRegister === "true" ? "/api/auth/register" : "/api/auth/login";
+
+        try {
+          const res = await fetch(`${baseUrl}${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(credentials),
+          });
+
+          const data = await res.json();
+
+          if (res.ok && data.success) {
+            return {
+              id: data.data.id,
+              email: data.data.email,
+              name: `${data.data.firstName} ${data.data.lastName}`,
+              role: data.data.role,
+              backendToken: data.data.token,
+              firstName: data.data.firstName,
+              lastName: data.data.lastName,
+              image: data.data.profileImage,
+            };
+          }
+          return null;
+        } catch (error) {
+          console.error("Auth error:", error);
+          return null;
+        }
+      },
     }),
   ],
   pages: {
@@ -31,33 +75,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return session;
     },
-    async jwt({ token, account, profile }) {
-      // Upon initial sign in, account and profile are available
+    async jwt({ token, user, account, profile }) {
+      // For Credentials provider, user is available on sign in
+      if (user) {
+        token.backendToken = (user as any).backendToken;
+        token.user = user;
+      }
+
+      // For Google provider
       if (account && profile) {
         try {
-          const res = await fetch(
-            process.env.NEXT_PUBLIC_API_URL
-              ? `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google`
-              : "http://localhost:5000/api/auth/google",
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                email: profile.email,
-                firstName: profile.given_name || profile.name?.split(" ")[0],
-                lastName: profile.family_name || profile.name?.split(" ").slice(1).join(" "),
-                profileImage: (profile as any).picture,
-              }),
-            }
-          );
+          const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+          const res = await fetch(`${baseUrl}/api/auth/google`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: profile.email,
+              firstName: profile.given_name || profile.name?.split(" ")[0],
+              lastName: profile.family_name || profile.name?.split(" ").slice(1).join(" "),
+              profileImage: (profile as any).picture,
+            }),
+          });
 
           if (res.ok) {
             const data = await res.json();
             if (data.success && data.data.token) {
               token.backendToken = data.data.token;
-              token.user = data.data; // Includes id, role, etc.
+              token.user = data.data;
             }
           }
         } catch (error) {
@@ -67,7 +111,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async redirect({ url, baseUrl }) {
-      // After sign in, always redirect to dashboard
       return `${baseUrl}/dashboard`;
     },
   },
