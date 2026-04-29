@@ -1,14 +1,22 @@
 'use client'
 
-import { useState } from 'react'
-import { dummyUsers, User, UserRole, rolePermissions } from '@/lib/user-data'
+import { useState, useEffect } from 'react'
+import { User, UserRole, rolePermissions } from '@/lib/user-data'
+import { fetchUsers, deleteUser as deleteUserApi } from '@/lib/api'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, Plus, Trash2, Shield, AlertCircle } from 'lucide-react'
 
 export function UsersTable() {
-  const [users, setUsers] = useState<User[]>(dummyUsers)
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+    useEffect(() => {
+      fetchUsers()
+        .then((data) => setUsers(data))
+        .catch(() => setUsers([]))
+        .finally(() => setLoading(false))
+    }, [])
   const [searchTerm, setSearchTerm] = useState('')
   const [filterRole, setFilterRole] = useState<'all' | UserRole>('all')
   const [showPermissions, setShowPermissions] = useState<string | null>(null)
@@ -23,9 +31,14 @@ export function UsersTable() {
     return matchesSearch && matchesRole
   })
 
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (confirm('Are you sure you want to delete this user?')) {
-      setUsers(users.filter((u) => u.id !== id))
+      try {
+        await deleteUserApi(id)
+        setUsers(users.filter((u) => u.id !== id))
+      } catch {
+        alert('Failed to delete user')
+      }
     }
   }
 
@@ -38,6 +51,10 @@ export function UsersTable() {
   }
 
   const roles: UserRole[] = ['super_admin', 'admin', 'team_member', 'marketing', 'hr']
+
+  if (loading) {
+    return <div className="p-8 text-center">Loading users...</div>
+  }
 
   return (
     <div className="space-y-4">
