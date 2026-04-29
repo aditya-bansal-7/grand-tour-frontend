@@ -23,14 +23,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
         const endpoint = credentials.isRegister === "true" ? "/api/auth/register" : "/api/auth/login";
 
+        console.log(`Attempting auth at: ${baseUrl}${endpoint}`);
+
         try {
+          const isReg = credentials.isRegister === "true";
+          const body = isReg 
+            ? {
+                email: credentials.email,
+                password: credentials.password,
+                firstName: credentials.firstName,
+                lastName: credentials.lastName,
+              }
+            : {
+                email: credentials.email,
+                password: credentials.password,
+              };
+
           const res = await fetch(`${baseUrl}${endpoint}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(credentials),
+            body: JSON.stringify(body),
           });
 
           const data = await res.json();
+          console.log("Auth response data:", data);
 
           if (res.ok && data.success) {
             return {
@@ -44,9 +60,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               image: data.data.profileImage,
             };
           }
+          
+          console.error("Auth failed:", data.message || "Unknown error");
           return null;
         } catch (error) {
-          console.error("Auth error:", error);
+          console.error("Critical Auth error:", error);
           return null;
         }
       },
