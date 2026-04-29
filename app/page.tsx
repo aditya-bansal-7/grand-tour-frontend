@@ -3,7 +3,7 @@
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Loader2, Mail, Lock, User, ArrowRight, Github } from "lucide-react";
+import { Loader2, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Home() {
