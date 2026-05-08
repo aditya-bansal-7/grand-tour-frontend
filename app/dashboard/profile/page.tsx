@@ -5,8 +5,9 @@ import { StudentLayout } from '@/components/student/student-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { applicationService } from '@/lib/services/api.service'
-import { Mail, Phone, MapPin, GraduationCap, Calendar, Loader2, User as UserIcon } from 'lucide-react'
+import { Mail, Phone, MapPin, GraduationCap, Calendar, Loader2, User as UserIcon, LogOut } from 'lucide-react'
 import { toast } from 'sonner'
+import { signOut } from 'next-auth/react'
 
 export default function ProfilePage() {
   const [application, setApplication] = useState<any>(null)
@@ -179,8 +180,16 @@ export default function ProfilePage() {
           </div>
         </Card>
 
-        <div className="flex gap-2">
+        <div className="flex gap-4">
           <Button variant="outline" onClick={() => window.print()}>Download Profile PDF</Button>
+          <Button 
+            variant="ghost" 
+            className="text-destructive hover:bg-destructive/10 gap-2" 
+            onClick={() => signOut({ callbackUrl: '/' })}
+          >
+            <LogOut className="w-4 h-4" />
+            Sign Out
+          </Button>
         </div>
       </div>
     </StudentLayout>

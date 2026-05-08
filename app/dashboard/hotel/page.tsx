@@ -35,25 +35,14 @@ export default function HotelPage() {
 
   const fetchData = async () => {
     try {
-      const [appData, payments] = await Promise.all([
-        applicationService.getMy(),
-        paymentService.getAll()
-      ])
-      
+      const appData = await applicationService.getMy()
       setApplication(appData)
       
-      // Check if Payment 1 is approved
-      // Assuming 'Payment 1' is in description or it's the first payment
-      const p1 = payments.find((p: any) => 
-        (p.description?.toLowerCase().includes('payment 1') || p.description?.toLowerCase().includes('enrollment')) && 
-        p.status === 'COMPLETED'
-      )
-      
-      // Alternative: if the application status is beyond a certain point
-      // or if any payment is completed. Let's stick to the description for now as requested.
-      setPayment1Approved(!!p1)
+      // Check if Payment 1 is approved directly from the application data
+      const isP1Approved = appData.payment1?.status === 'COMPLETED'
+      setPayment1Approved(isP1Approved)
 
-      if (p1) {
+      if (isP1Approved) {
         const assignData = await hotelService.getMyAssignment()
         setAssignment(assignData)
       }

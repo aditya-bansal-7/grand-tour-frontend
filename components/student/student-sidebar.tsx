@@ -18,8 +18,10 @@ import {
   Building2,
   CheckSquare,
   Shield,
-  PlaneTakeoff
+  PlaneTakeoff,
+  LogOut
 } from 'lucide-react'
+import { signOut } from 'next-auth/react'
 
 interface StudentSidebarProps {
   currentStep: string
@@ -189,6 +191,13 @@ export function StudentSidebar({ currentStep }: StudentSidebarProps) {
             <HelpCircle className="w-4 h-4 group-hover:text-primary transition-colors" />
             <span>FAQ & Help</span>
           </Link>
+          <button 
+            onClick={() => signOut({ callbackUrl: '/' })}
+            className="flex items-center gap-3 text-sm text-red-500 hover:text-red-600 transition-colors p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 group w-full text-left"
+          >
+            <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
+            <span>Sign Out</span>
+          </button>
           <div className="text-xs text-muted-foreground space-y-2 p-3 bg-primary/5 border border-primary/10 rounded-lg">
             <p className="font-semibold text-foreground text-xs uppercase tracking-wider">Support</p>
             <p className="leading-relaxed">Have questions? Contact us via WhatsApp or email for instant help</p>
