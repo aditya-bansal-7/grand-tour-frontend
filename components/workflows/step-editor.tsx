@@ -5,18 +5,33 @@ import { WorkflowStep, WorkflowField, FieldType } from '@/lib/workflow-schema'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Trash2, GripVertical, Settings2, Check, X } from 'lucide-react'
+import { 
+  Plus, 
+  Trash2, 
+  GripVertical, 
+  Settings2, 
+  X, 
+  Layout, 
+  Type, 
+  ChevronDown, 
+  ChevronUp,
+  Save,
+  Calendar,
+  CheckCircle,
+  FileText,
+  Hash,
+  Upload,
+  CreditCard
+} from 'lucide-react'
 
-const FIELD_TYPES: { value: FieldType; label: string }[] = [
-  { value: 'text', label: 'Text Input' },
-  { value: 'textarea', label: 'Textarea' },
-  { value: 'select', label: 'Select Dropdown' },
-  { value: 'checkbox', label: 'Checkbox' },
-  { value: 'radio', label: 'Radio Buttons' },
-  { value: 'date', label: 'Date Picker' },
-  { value: 'number', label: 'Number Input' },
-  { value: 'file', label: 'File Upload' },
-  { value: 'section', label: 'Section Title' },
+const FIELD_TYPES: { value: FieldType; label: string; icon: any }[] = [
+  { value: 'text', label: 'Short Text', icon: Type },
+  { value: 'textarea', label: 'Long Text', icon: Layout },
+  { value: 'select', label: 'Dropdown', icon: ChevronDown },
+  { value: 'checkbox', label: 'Checkbox', icon: CheckCircle },
+  { value: 'date', label: 'Date', icon: Calendar },
+  { value: 'number', label: 'Number', icon: Hash },
+  { value: 'file', label: 'File Upload', icon: Upload },
 ]
 
 interface StepEditorProps {
@@ -28,13 +43,52 @@ interface StepEditorProps {
 export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
   const [name, setName] = useState(step.name)
   const [description, setDescription] = useState(step.description || '')
-  const [deadline, setDeadline] = useState(step.deadline?.toString() || '')
-  const [roleAssignment, setRoleAssignment] = useState(step.roleAssignment || '')
-  const [triggerEmail, setTriggerEmail] = useState(step.triggerEmail || false)
-  const [fields, setFields] = useState<WorkflowField[]>(step.fields)
+  const [fields, setFields] = useState<WorkflowField[]>(step.fields || [])
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
+  const [isInterviewStep, setIsInterviewStep] = useState(step.isInterviewStep || false)
+  
+  // Payment configuration state
+  const [isPaymentStep, setIsPaymentStep] = useState(step.isPaymentStep || false)
+  const [amount, setAmount] = useState(step.amount || 0)
+  const [gstPercentage, setGstPercentage] = useState(step.gstPercentage || 18)
+  const [discountPercentage, setDiscountPercentage] = useState(step.discountPercentage || 0)
+  const [paymentConfig, setPaymentConfig] = useState(step.paymentConfig || {
+    accountName: '',
+    accountNumber: '',
+    ifsc: '',
+    bankName: '',
+    qrCodeUrl: ''
+  })
 
-  const handleAddField = (type: FieldType) => {
+  // Group fields by sections for visual representation
+  const sections: { id: string; name: string; fields: WorkflowField[] }[] = []
+  let currentSec: any = null
+
+  fields.forEach(f => {
+    if (f.type === 'section') {
+      currentSec = { id: f.id, name: f.name, fields: [] }
+      sections.push(currentSec)
+    } else {
+      if (!currentSec) {
+        currentSec = { id: 'default', name: 'General Information', fields: [] }
+        sections.push(currentSec)
+      }
+      currentSec.fields.push(f)
+    }
+  })
+
+  const handleAddSection = () => {
+    const newSection: WorkflowField = {
+      id: `sec-${Date.now()}`,
+      type: 'section',
+      name: 'New Section',
+      required: false,
+      order: fields.length + 1,
+    }
+    setFields([...fields, newSection])
+  }
+
+  const handleAddField = (sectionId: string, type: FieldType) => {
     const newField: WorkflowField = {
       id: `field-${Date.now()}`,
       type,
@@ -42,12 +96,27 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
       required: false,
       order: fields.length + 1,
     }
-    setFields([...fields, newField])
+    
+    // Find the section and insert after its last field
+    const sectionIdx = fields.findIndex(f => f.id === sectionId)
+    if (sectionIdx === -1) {
+      setFields([...fields, newField])
+    } else {
+      // Find the last field in this section
+      let lastIdx = sectionIdx
+      for (let i = sectionIdx + 1; i < fields.length; i++) {
+        if (fields[i].type === 'section') break
+        lastIdx = i
+      }
+      const newFields = [...fields]
+      newFields.splice(lastIdx + 1, 0, newField)
+      setFields(newFields)
+    }
     setEditingFieldId(newField.id)
   }
 
   const handleDeleteField = (id: string) => {
-    setFields(fields.filter((f) => f.id !== id).map((f, i) => ({ ...f, order: i + 1 })))
+    setFields(fields.filter((f) => f.id !== id))
   }
 
   const handleUpdateField = (id: string, updates: Partial<WorkflowField>) => {
@@ -55,237 +124,370 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
   }
 
   const handleSave = () => {
-    if (!name.trim()) {
-      alert('Please enter a step name')
-      return
-    }
-
-    const updatedStep: WorkflowStep = {
-      ...step,
-      name,
-      description,
-      deadline: deadline ? parseInt(deadline) : undefined,
-      roleAssignment,
-      triggerEmail,
-      fields,
-    }
-
-    onSave(updatedStep)
+    onSave({ 
+      ...step, 
+      name, 
+      description, 
+      fields, 
+      isInterviewStep,
+      isPaymentStep,
+      amount,
+      gstPercentage,
+      discountPercentage,
+      paymentConfig 
+    })
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Edit Step</h2>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onCancel}>
-            Cancel
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border pb-6">
+        <div>
+          <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Step Designer</h2>
+          <p className="text-muted-foreground mt-1 text-lg">Configure sections and fields for &ldquo;{name}&rdquo;</p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" onClick={onCancel} className="px-6">Cancel</Button>
+          <Button onClick={handleSave} className="px-6 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+            <Save className="w-4 h-4 mr-2" />
+            Save Configuration
           </Button>
-          <Button onClick={handleSave}>Save Step</Button>
         </div>
       </div>
 
-      <Card className="p-6 space-y-4">
-        <div>
-          <label className="text-sm font-medium text-foreground">Step Name</label>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter step name"
-            className="mt-1"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-foreground">Description</label>
-          <Input
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Optional step description"
-            className="mt-1"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-sm font-medium text-foreground">Deadline (days)</label>
-            <Input
-              type="number"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              placeholder="0"
-              className="mt-1"
+      <Card className="p-8 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 border-primary/10 shadow-sm">
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="space-y-2">
+            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Step Name</label>
+            <Input 
+              value={name} 
+              onChange={(e) => setName(e.target.value)} 
+              className="bg-background/50 backdrop-blur-sm border-2 focus:border-primary text-lg h-12"
             />
           </div>
-
-          <div>
-            <label className="text-sm font-medium text-foreground">Role Assignment</label>
-            <Input
-              value={roleAssignment}
-              onChange={(e) => setRoleAssignment(e.target.value)}
-              placeholder="e.g., Sales Manager"
-              className="mt-1"
+          <div className="space-y-2">
+            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Help Text / Description</label>
+            <Input 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              className="bg-background/50 backdrop-blur-sm border-2 focus:border-primary text-lg h-12"
             />
           </div>
         </div>
 
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={triggerEmail}
-            onChange={(e) => setTriggerEmail(e.target.checked)}
-            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
-          />
-          <span className="text-sm font-medium text-foreground">Send email notification on completion</span>
-        </label>
+        <div className="mt-8 space-y-4">
+          <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Calendar className="w-6 h-6 text-primary" />
+              <div>
+                <p className="font-bold text-foreground">Is this an Interview Step?</p>
+                <p className="text-xs text-muted-foreground">This will enable the custom interview slot booking for this stage.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={isInterviewStep} 
+                  onChange={(e) => {
+                    setIsInterviewStep(e.target.checked)
+                    if (e.target.checked) setIsPaymentStep(false)
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+              </label>
+            </div>
+          </div>
+
+          <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CreditCard className="w-6 h-6 text-emerald-600" />
+              <div>
+                <p className="font-bold text-emerald-900">Is this a Payment Step?</p>
+                <p className="text-xs text-emerald-700">This will enable the dynamic payment collection interface.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={isPaymentStep} 
+                  onChange={(e) => {
+                    setIsPaymentStep(e.target.checked)
+                    if (e.target.checked) setIsInterviewStep(false)
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-emerald-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-500/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-emerald-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+          </div>
+        </div>
       </Card>
 
-      <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Fields</h3>
-          <div className="flex gap-2 flex-wrap justify-end">
-            {FIELD_TYPES.slice(0, 5).map((type) => (
-              <Button
-                key={type.value}
-                variant="outline"
-                size="sm"
-                onClick={() => handleAddField(type.value)}
-                className="text-xs"
-              >
-                + {type.label}
-              </Button>
-            ))}
+      {isPaymentStep ? (
+        <Card className="p-8 border-2 border-emerald-500/20 shadow-sm space-y-6">
+          <h3 className="text-xl font-bold text-emerald-900 flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-emerald-600" />
+            Payment Configuration
+          </h3>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Base Amount (₹)</label>
+              <Input 
+                type="number"
+                value={amount} 
+                onChange={(e) => setAmount(Number(e.target.value))} 
+                className="bg-background border-2 h-11 focus:border-emerald-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">GST Percentage (%)</label>
+              <Input 
+                type="number"
+                value={gstPercentage} 
+                onChange={(e) => setGstPercentage(Number(e.target.value))} 
+                className="bg-background border-2 h-11 focus:border-emerald-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Discount (%)</label>
+              <Input 
+                type="number"
+                value={discountPercentage} 
+                onChange={(e) => setDiscountPercentage(Number(e.target.value))} 
+                className="bg-background border-2 h-11 focus:border-emerald-500"
+              />
+            </div>
           </div>
-        </div>
-
-        <div className="flex gap-2 flex-wrap">
-          {FIELD_TYPES.slice(5).map((type) => (
-            <Button
-              key={type.value}
-              variant="outline"
-              size="sm"
-              onClick={() => handleAddField(type.value)}
-              className="text-xs"
-            >
-              + {type.label}
+          
+          <div className="pt-4 border-t border-border">
+            <h4 className="font-semibold text-foreground mb-4">Bank Transfer Details</h4>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">Account Name</label>
+                <Input 
+                  value={paymentConfig.accountName} 
+                  onChange={(e) => setPaymentConfig({...paymentConfig, accountName: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">Account Number</label>
+                <Input 
+                  value={paymentConfig.accountNumber} 
+                  onChange={(e) => setPaymentConfig({...paymentConfig, accountNumber: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">IFSC Code</label>
+                <Input 
+                  value={paymentConfig.ifsc} 
+                  onChange={(e) => setPaymentConfig({...paymentConfig, ifsc: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">Bank Name</label>
+                <Input 
+                  value={paymentConfig.bankName} 
+                  onChange={(e) => setPaymentConfig({...paymentConfig, bankName: e.target.value})} 
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2 mt-2">
+                <label className="text-xs font-bold text-muted-foreground flex items-center justify-between">
+                  <span>Custom QR Code Image URL</span>
+                  <span className="text-[10px] text-muted-foreground/60 font-normal">Optional (overrides dynamic QR)</span>
+                </label>
+                <Input 
+                  placeholder="https://example.com/my-qr-code.png"
+                  value={paymentConfig.qrCodeUrl || ''} 
+                  onChange={(e) => setPaymentConfig({...paymentConfig, qrCodeUrl: e.target.value})} 
+                />
+              </div>
+            </div>
+          </div>
+        </Card>
+      ) : !isInterviewStep ? (
+        <div className="space-y-8">
+          <div className="flex justify-between items-center">
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
+              <Layout className="w-5 h-5 text-primary" />
+              Step Structure
+            </h3>
+            <Button onClick={handleAddSection} variant="outline" className="border-2 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary gap-2">
+              <Plus className="w-4 h-4" />
+              Add New Section
             </Button>
-          ))}
-        </div>
+          </div>
 
-        {fields.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
-            <p className="text-muted-foreground">No fields yet. Click a field type to add one.</p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {fields.map((field) => (
-              <Card key={field.id} className={`p-4 transition-all ${editingFieldId === field.id ? 'ring-2 ring-primary border-transparent' : ''}`}>
-                {editingFieldId === field.id ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold uppercase tracking-wider text-primary">Editing {field.type} Field</span>
-                      <Button variant="ghost" size="sm" onClick={() => setEditingFieldId(null)}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    
-                    <div className="grid gap-4">
-                      <div>
-                        <label className="text-xs font-semibold text-muted-foreground mb-1 block">Field Label</label>
-                        <Input
-                          value={field.name}
-                          onChange={(e) => handleUpdateField(field.id, { name: e.target.value })}
-                          placeholder="e.g., Full Name"
-                        />
-                      </div>
-                      
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={field.required}
-                            onChange={(e) => handleUpdateField(field.id, { required: e.target.checked })}
-                            className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+          {sections.length === 0 ? (
+            <Card className="p-16 text-center border-2 border-dashed border-muted bg-muted/5">
+              <div className="max-w-xs mx-auto space-y-4">
+                <Layout className="w-12 h-12 text-muted-foreground/30 mx-auto" />
+                <p className="text-muted-foreground font-medium">Your step has no structure yet. Start by adding a section.</p>
+                <Button onClick={handleAddSection} className="w-full">Initialize First Section</Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="space-y-10">
+              {sections.map((section) => (
+                <div key={section.id} className="space-y-4 group">
+                  <Card className="overflow-hidden border-2 border-primary/20 shadow-md">
+                    <div className="bg-primary/5 p-4 flex items-center justify-between border-b border-primary/10">
+                      <div className="flex items-center gap-3 flex-1">
+                        <GripVertical className="w-5 h-5 text-primary/40 cursor-grab" />
+                        {section.id === 'default' ? (
+                          <h4 className="font-bold text-primary">{section.name}</h4>
+                        ) : (
+                          <Input 
+                            value={section.name} 
+                            onChange={(e) => handleUpdateField(section.id, { name: e.target.value })}
+                            className="bg-transparent border-none font-bold text-primary p-0 h-auto focus-visible:ring-0 text-lg max-w-sm"
                           />
-                          <span className="text-sm font-medium">Required</span>
-                        </label>
-                        
-                        {(field.type === 'select' || field.type === 'radio') && (
-                          <div className="flex-1">
-                            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Options (comma separated)</label>
-                            <Input
-                              value={field.options?.join(', ') || ''}
-                              onChange={(e) => handleUpdateField(field.id, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                              placeholder="Option 1, Option 2, Option 3"
-                            />
-                          </div>
                         )}
                       </div>
-                      
-                      <div>
-                        <label className="text-xs font-semibold text-muted-foreground mb-1 block">Placeholder (optional)</label>
-                        <Input
-                          value={field.placeholder || ''}
-                          onChange={(e) => handleUpdateField(field.id, { placeholder: e.target.value })}
-                          placeholder="Enter placeholder text"
-                        />
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1 mr-4">
+                          {FIELD_TYPES.map(type => (
+                            <Button
+                              key={type.value}
+                              variant="ghost"
+                              size="icon"
+                              title={`Add ${type.label}`}
+                              onClick={() => handleAddField(section.id, type.value)}
+                              className="w-8 h-8 rounded-full hover:bg-primary/10 hover:text-primary transition-all"
+                            >
+                              <type.icon className="w-4 h-4" />
+                            </Button>
+                          ))}
+                        </div>
+                        {section.id !== 'default' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteField(section.id)}
+                            className="text-muted-foreground hover:text-red-600 h-8 w-8"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     
-                    <div className="flex justify-end gap-2 pt-2">
-                      <Button variant="secondary" size="sm" onClick={() => setEditingFieldId(null)}>
-                        Done
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm text-foreground">{field.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] font-bold uppercase bg-secondary px-1.5 py-0.5 rounded text-secondary-foreground">
-                            {field.type}
-                          </span>
-                          {field.required && (
-                            <span className="text-[10px] font-bold uppercase bg-red-50 px-1.5 py-0.5 rounded text-red-600 border border-red-100">
-                              Required
-                            </span>
-                          )}
-                          {field.placeholder && (
-                            <span className="text-[10px] text-muted-foreground italic">
-                              &ldquo;{field.placeholder}&rdquo;
-                            </span>
-                          )}
+                    <div className="p-6 space-y-4 min-h-[50px]">
+                      {section.fields.length === 0 ? (
+                        <p className="text-center text-sm text-muted-foreground py-8 border-2 border-dashed border-muted/50 rounded-xl">
+                          No fields in this section. Use the icons above to add inputs.
+                        </p>
+                      ) : (
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {section.fields.map(field => (
+                            <Card key={field.id} className={`p-4 transition-all duration-300 ${editingFieldId === field.id ? 'ring-2 ring-primary bg-primary/5 shadow-lg scale-[1.01]' : 'hover:border-primary/40 hover:bg-accent/5'}`}>
+                              {editingFieldId === field.id ? (
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary px-2 py-1 bg-primary/10 rounded-full">
+                                      Configuring {field.type}
+                                    </span>
+                                    <Button variant="ghost" size="sm" onClick={() => setEditingFieldId(null)} className="h-6 w-6 p-0 rounded-full">
+                                      <CheckCircle className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-muted-foreground ml-1">LABEL</label>
+                                      <Input 
+                                        value={field.name} 
+                                        onChange={(e) => handleUpdateField(field.id, { name: e.target.value })}
+                                        className="h-9 bg-background"
+                                        placeholder="Field label..."
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-4 pt-1">
+                                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={field.required} 
+                                          onChange={(e) => handleUpdateField(field.id, { required: e.target.checked })}
+                                          className="w-4 h-4 accent-primary rounded"
+                                        />
+                                        <span className="text-xs font-bold text-foreground">Required</span>
+                                      </label>
+                                    </div>
+                                    {field.type === 'select' && (
+                                      <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-muted-foreground ml-1">OPTIONS (COMMA SEPARATED)</label>
+                                        <Input 
+                                          value={field.options?.join(', ') || ''} 
+                                          onChange={(e) => handleUpdateField(field.id, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                          className="h-9 bg-background"
+                                          placeholder="Opt 1, Opt 2, Opt 3..."
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-muted-foreground ml-1">PLACEHOLDER</label>
+                                      <Input 
+                                        value={field.placeholder || ''} 
+                                        onChange={(e) => handleUpdateField(field.id, { placeholder: e.target.value })}
+                                        className="h-9 bg-background"
+                                        placeholder="Hint text..."
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="p-2 bg-secondary rounded-lg text-primary">
+                                      {FIELD_TYPES.find(t => t.value === field.type)?.icon && (
+                                        <div className="w-4 h-4">
+                                          {/* @ts-ignore */}
+                                          {(() => {
+                                            const Icon = FIELD_TYPES.find(t => t.value === field.type)?.icon
+                                            return <Icon className="w-full h-full" />
+                                          })()}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-bold text-sm text-foreground truncate">{field.name}</p>
+                                      <div className="flex gap-2 mt-1">
+                                        <span className="text-[9px] font-bold uppercase text-muted-foreground tracking-tighter">{field.type}</span>
+                                        {field.required && <span className="text-[9px] font-bold uppercase text-red-500 tracking-tighter">Required</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon" onClick={() => setEditingFieldId(field.id)} className="h-8 w-8">
+                                      <Settings2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteField(field.id)} className="h-8 w-8 hover:text-red-600">
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </Card>
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingFieldId(field.id)}
-                        className="text-muted-foreground hover:text-primary"
-                      >
-                        <Settings2 className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteField(field.id)}
-                        className="text-muted-foreground hover:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </Card>
-            ))}
+                  </Card>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <Card className="p-16 text-center border-2 border-dashed border-primary/20 bg-primary/5 space-y-6">
+          <Calendar className="w-16 h-16 text-primary/40 mx-auto" />
+          <div className="max-w-md mx-auto space-y-2">
+            <h3 className="text-xl font-bold text-foreground">Interview Flow Enabled</h3>
+            <p className="text-muted-foreground">This step will bypass custom fields and instead prompt the student to pick an available interview slot from your manual booking system.</p>
           </div>
-        )}
-      </div>
+
+        </Card>
+      )}
     </div>
   )
 }

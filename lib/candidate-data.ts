@@ -16,6 +16,23 @@ export interface Candidate {
   createdAt: Date
   updatedAt: Date
   attachments: string[]
+  
+  // New Education/Profile fields
+  collegeName?: string
+  universityName?: string
+  course?: string
+  currentYear?: string
+  department?: string
+  cgpa?: number
+  whatsapp?: string
+  dateOfBirth?: string
+  address?: string
+  city?: string
+  state?: string
+  pincode?: string
+  internshipStartDate?: string
+  internshipEndDate?: string
+  additionalData?: any
 }
 
 export const dummyCandidates: Candidate[] = [

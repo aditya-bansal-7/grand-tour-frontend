@@ -30,19 +30,15 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className={`font-sans antialiased`}>
-        <ThemeProvider defaultTheme="light" storageKey="tasko-theme">
-          {children}
-        </ThemeProvider>
-        <Analytics />
-      </body>
-    </html>
+    <ThemeProvider defaultTheme="light" storageKey="tasko-theme">
+      {children}
+      <Analytics />
+    </ThemeProvider>
   )
 }

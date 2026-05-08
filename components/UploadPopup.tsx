@@ -20,11 +20,23 @@ import Image from "next/image";
 interface UploadPopupProps {
   isOpen: boolean;
   onClose: () => void;
-  onUploadComplete?: (data: UploadResponse["data"]) => void;
+  onUploadComplete?: (data: any) => void;
   token: string;
+  // Optional metadata for auto-saving to backend
+  applicationId?: string;
+  documentType?: string;
+  documentName?: string;
 }
 
-export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }: UploadPopupProps) {
+export default function UploadPopup({ 
+  isOpen, 
+  onClose, 
+  onUploadComplete, 
+  token,
+  applicationId,
+  documentType,
+  documentName
+}: UploadPopupProps) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
@@ -90,9 +102,28 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
     setProgress(0);
 
     try {
+      // 1. Upload to Cloudinary
       const response = await uploadFile(file, token, (p) => setProgress(p));
+      
+      let finalData = response.data;
+
+      // 2. If applicationId is provided, save to backend Document model
+      if (applicationId && documentType) {
+        const { documentService } = await import("@/lib/services/api.service");
+        const newDoc = await documentService.create({
+          applicationId,
+          name: documentName || file.name,
+          type: documentType,
+          url: response.data.url,
+          fileName: file.name,
+          size: file.size / (1024 * 1024), // in MB
+          status: "PENDING",
+        });
+        finalData = newDoc;
+      }
+
       setStatus("success");
-      onUploadComplete?.(response.data);
+      onUploadComplete?.(finalData);
       
       // Auto close after success
       setTimeout(onClose, 2000);
@@ -103,10 +134,10 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
   };
 
   const getFileIcon = () => {
-    if (!file) return <Upload className="w-10 h-10 text-slate-400" />;
-    if (file.type.startsWith("image/")) return <ImageIcon className="w-10 h-10 text-blue-400" />;
-    if (file.type.startsWith("video/")) return <Video className="w-10 h-10 text-purple-400" />;
-    return <FileText className="w-10 h-10 text-amber-400" />;
+    if (!file) return <Upload className="w-10 h-10 text-primary/40" />;
+    if (file.type.startsWith("image/")) return <ImageIcon className="w-10 h-10 text-primary" />;
+    if (file.type.startsWith("video/")) return <Video className="w-10 h-10 text-primary" />;
+    return <FileText className="w-10 h-10 text-primary" />;
   };
 
   return (
@@ -119,24 +150,27 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={status !== "uploading" ? onClose : undefined}
-            className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md"
           />
 
           {/* Modal Container */}
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pointer-events-none">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="w-full max-w-md bg-slate-900 border border-white/10 rounded-3xl shadow-2xl overflow-hidden pointer-events-auto"
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-md bg-background border-2 border-primary/10 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] overflow-hidden pointer-events-auto"
             >
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-                <h3 className="text-lg font-semibold text-white">Upload Media</h3>
+              <div className="flex items-center justify-between px-8 py-6 border-b border-primary/5">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-black tracking-tight text-foreground">Upload Media</h3>
+                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select your documents</p>
+                </div>
                 {status !== "uploading" && (
                   <button 
                     onClick={onClose}
-                    className="p-1.5 rounded-full hover:bg-white/5 text-slate-400 hover:text-white transition-colors"
+                    className="p-2 rounded-2xl hover:bg-primary/5 text-muted-foreground hover:text-primary transition-all active:scale-90"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -144,7 +178,7 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
               </div>
 
               {/* Content */}
-              <div className="p-6">
+              <div className="p-8">
                 {status === "idle" || status === "error" ? (
                   <div className="space-y-6">
                     {/* Upload Area */}
@@ -153,10 +187,10 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
                       onDragOver={handleDragOver}
                       onDrop={handleDrop}
                       className={cn(
-                        "relative group cursor-pointer flex flex-col items-center justify-center gap-4 py-12 px-6 border-2 border-dashed rounded-2xl transition-all duration-300",
+                        "relative group cursor-pointer flex flex-col items-center justify-center gap-5 py-14 px-8 border-2 border-dashed rounded-[2rem] transition-all duration-500",
                         file 
-                          ? "border-indigo-500/50 bg-indigo-500/5" 
-                          : "border-white/10 hover:border-white/20 bg-white/[0.02] hover:bg-white/[0.04]"
+                          ? "border-primary bg-primary/5 shadow-inner" 
+                          : "border-primary/10 hover:border-primary/30 bg-secondary/5 hover:bg-primary/5"
                       )}
                     >
                       <input
@@ -168,7 +202,7 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
                       />
 
                       {preview ? (
-                        <div className="relative w-32 h-32 rounded-xl overflow-hidden shadow-lg border border-white/10">
+                        <div className="relative w-36 h-36 rounded-2xl overflow-hidden shadow-2xl border-2 border-primary/20 animate-in zoom-in duration-500">
                           <Image 
                             src={preview} 
                             alt="Preview" 
@@ -177,16 +211,16 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
                           />
                         </div>
                       ) : (
-                        <div className="p-4 rounded-full bg-white/5 group-hover:scale-110 transition-transform duration-300">
+                        <div className="p-5 rounded-[1.5rem] bg-primary/10 group-hover:scale-110 transition-all duration-500 shadow-sm group-hover:shadow-primary/20">
                           {getFileIcon()}
                         </div>
                       )}
 
                       <div className="text-center">
-                        <p className="text-sm font-medium text-slate-200">
+                        <p className="text-sm font-black text-foreground">
                           {file ? file.name : "Click to select or drag and drop"}
                         </p>
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mt-2">
                           PNG, JPG, MP4 or PDF (Max. 50MB)
                         </p>
                       </div>
@@ -197,7 +231,7 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
                       <motion.div 
                         initial={{ opacity: 0, y: -10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm"
+                        className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-600 text-xs font-bold"
                       >
                         <AlertCircle className="w-4 h-4 flex-shrink-0" />
                         {error}
@@ -209,10 +243,10 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
                       disabled={!file}
                       onClick={handleSubmit}
                       className={cn(
-                        "w-full py-3.5 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-center gap-2",
+                        "w-full py-4 rounded-[1.25rem] font-black uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-3",
                         file
-                          ? "bg-gradient-to-r from-indigo-500 to-violet-600 text-white shadow-lg shadow-indigo-500/25 active:scale-95"
-                          : "bg-white/5 text-slate-500 cursor-not-allowed"
+                          ? "bg-gradient-to-r from-primary to-primary/80 text-white shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]"
+                          : "bg-secondary text-muted-foreground cursor-not-allowed opacity-50"
                       )}
                     >
                       <Upload className="w-5 h-5" />
@@ -220,44 +254,46 @@ export default function UploadPopup({ isOpen, onClose, onUploadComplete, token }
                     </button>
                   </div>
                 ) : status === "uploading" ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-8">
+                  <div className="py-12 flex flex-col items-center justify-center gap-10">
                     <div className="relative flex items-center justify-center">
-                      <div className="w-24 h-24 rounded-full border-4 border-white/5" />
-                      <svg className="absolute w-24 h-24 -rotate-90">
+                      <div className="w-32 h-32 rounded-full border-8 border-primary/5" />
+                      <svg className="absolute w-32 h-32 -rotate-90">
                         <circle
-                          cx="48"
-                          cy="48"
-                          r="44"
+                          cx="64"
+                          cy="64"
+                          r="56"
                           stroke="currentColor"
                           strokeWidth="8"
                           fill="transparent"
-                          className="text-indigo-500 transition-all duration-300 ease-out"
+                          className="text-primary transition-all duration-700 ease-out"
                           style={{
-                            strokeDasharray: 276.46,
-                            strokeDashoffset: 276.46 - (progress / 100) * 276.46
+                            strokeDasharray: 351.86,
+                            strokeDashoffset: 351.86 - (progress / 100) * 351.86
                           }}
                         />
                       </svg>
-                      <span className="absolute text-xl font-bold text-white">{progress}%</span>
+                      <div className="absolute flex flex-col items-center">
+                        <span className="text-2xl font-black text-foreground">{progress}%</span>
+                      </div>
                     </div>
 
                     <div className="w-full text-center space-y-2">
-                      <p className="font-semibold text-white">Uploading file...</p>
-                      <p className="text-sm text-slate-400">Please keep this window open</p>
+                      <p className="text-lg font-black tracking-tight text-foreground">Uploading files...</p>
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Keep this window open</p>
                     </div>
                   </div>
                 ) : (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="py-12 flex flex-col items-center justify-center gap-4"
+                    className="py-12 flex flex-col items-center justify-center gap-6"
                   >
-                    <div className="w-20 h-20 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-                      <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                    <div className="w-24 h-24 rounded-[2rem] bg-primary/10 border-2 border-primary/20 flex items-center justify-center shadow-lg shadow-primary/10">
+                      <CheckCircle2 className="w-12 h-12 text-primary" />
                     </div>
-                    <div className="text-center">
-                      <h4 className="text-xl font-bold text-white">Upload Complete!</h4>
-                      <p className="text-sm text-slate-400 mt-1">Your file has been stored securely</p>
+                    <div className="text-center space-y-2">
+                      <h4 className="text-2xl font-black tracking-tight text-foreground">Upload Complete!</h4>
+                      <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your files have been stored securely</p>
                     </div>
                   </motion.div>
                 )}

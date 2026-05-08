@@ -1,5 +1,4 @@
 export type WorkflowStep = 
-  | 'login'
   | 'application'
   | 'documents'
   | 'interview'
@@ -25,7 +24,6 @@ export interface WorkflowStepData {
 }
 
 export const WORKFLOW_STEPS: Record<WorkflowStep, Omit<WorkflowStepData, 'completed' | 'current' | 'locked'>> = {
-  login: { id: 'login', title: 'Login / Verification', description: 'Account verification', icon: '✓', order: 1 },
   application: { id: 'application', title: 'Application Form', description: 'Submit your details', icon: '✓', order: 2 },
   documents: { id: 'documents', title: 'Documents Upload', description: 'Upload required docs', icon: '✓', order: 3 },
   interview: { id: 'interview', title: 'Interview Booking', description: 'Schedule interview', icon: '🔓', order: 4 },
@@ -40,14 +38,14 @@ export const WORKFLOW_STEPS: Record<WorkflowStep, Omit<WorkflowStepData, 'comple
   travel: { id: 'travel', title: 'Travel Details', description: 'Travel information', icon: '🔒', order: 13 },
 }
 
-export const getWorkflowSteps = (completedUpTo: WorkflowStep): WorkflowStepData[] => {
+export const getWorkflowSteps = (currentStepId: WorkflowStep): WorkflowStepData[] => {
   const steps = Object.values(WORKFLOW_STEPS)
-  const completedIndex = steps.findIndex(s => s.id === completedUpTo)
+  const currentIndex = steps.findIndex(s => s.id === currentStepId)
   
   return steps.map((step, index) => ({
     ...step,
-    completed: index < completedIndex || index === completedIndex,
-    current: index === completedIndex + 1,
-    locked: index > completedIndex + 1,
+    completed: index < currentIndex,
+    current: index === currentIndex,
+    locked: index > currentIndex,
   }))
 }

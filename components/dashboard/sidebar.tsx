@@ -15,6 +15,8 @@ import {
   ChevronUp,
   ShieldCheck,
   Loader2,
+  CreditCard,
+  Building2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useState, useEffect } from "react"
@@ -36,9 +38,12 @@ const ALL_MENU_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/admin", feature: "dashboard" },
   { icon: Search, label: "Search", href: "/admin/search", feature: "search" },
   { icon: Zap, label: "Workflows", href: "/admin/workflows", feature: "workflows" },
+  { icon: FileText, label: "Applications", href: "/admin/applications", feature: "applications", badge: "New" },
   { icon: Users, label: "Candidates", href: "/admin/candidates", feature: "candidates" },
   { icon: Calendar, label: "Interviews", href: "/admin/interviews", feature: "interviews" },
   { icon: FileText, label: "Documents", href: "/admin/documents", feature: "documents" },
+  { icon: Building2, label: "Hotels", href: "/admin/hotels", feature: "hotels" },
+  { icon: CreditCard, label: "Payments", href: "/admin/payments", feature: "payments", badge: "New" },
   { icon: Users, label: "Users", href: "/admin/users", feature: "users" },
   { icon: BarChart3, label: "Reports", href: "/admin/reports", feature: "reports" },
   { icon: Activity, label: "Activity", href: "/admin/activity", feature: "activity", badge: "3" },

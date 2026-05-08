@@ -7,7 +7,7 @@ interface StudentLayoutProps {
   currentStep: string
 }
 
-export function StudentLayout({ children, currentStep }: StudentLayoutProps) {
+export function StudentLayout({ children, currentStep = 'application' }: StudentLayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
       <StudentSidebar currentStep={currentStep} />

@@ -1,15 +1,16 @@
 'use client'
 
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { getWorkflowSteps } from '@/lib/student-workflow'
+import { workflowService, applicationService } from '@/lib/services/api.service'
 import { cn } from '@/lib/utils'
-import { 
-  GraduationCap, 
-  CheckCircle2, 
-  ChevronRight, 
-  Lock, 
-  User, 
+import {
+  GraduationCap,
+  CheckCircle2,
+  ChevronRight,
+  Lock,
+  User,
   HelpCircle,
   FileText,
   Calendar,
@@ -26,7 +27,68 @@ interface StudentSidebarProps {
 
 export function StudentSidebar({ currentStep }: StudentSidebarProps) {
   const pathname = usePathname()
-  const steps = getWorkflowSteps(currentStep as any)
+  const [workflow, setWorkflow] = useState<any>(null)
+  const [application, setApplication] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [wfData, appData] = await Promise.all([
+          workflowService.get(),
+          applicationService.getMy()
+        ])
+        setWorkflow(wfData)
+        setApplication(appData)
+      } catch (error) {
+        console.error('Failed to fetch sidebar data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [currentStep])
+
+  // Add dynamic steps from workflow
+  const dynamicSteps = (workflow?.steps || [])
+    .map((s: any) => ({
+      id: s.id,
+      title: s.name,
+      description: s.description
+    }))
+
+  const allSteps = [...dynamicSteps]
+
+  // The step the user is CURRENTLY viewing on the screen
+  const viewIndex = allSteps.findIndex(s => s.id === currentStep || pathname.includes(s.id))
+  
+  // The step the user has REACHED in the database
+  const dbStepId = application?.currentStepId || 'application'
+  let furthestIndex = allSteps.findIndex(s => s.id === dbStepId)
+
+  // If approved, ensure at least the step after interview is unlocked
+  if (application?.status === 'ACCEPTED') {
+    const interviewIdx = (workflow?.steps || []).findIndex((s: any) => 
+      s.isInterviewStep || s.id === 'interview' || s.id.includes('interview')
+    )
+    if (furthestIndex <= interviewIdx && interviewIdx !== -1) {
+      furthestIndex = interviewIdx + 1
+    }
+  }
+
+  const steps = allSteps.map((step, index) => {
+    const isCurrent = step.id === dbStepId
+    const isCompleted = index < furthestIndex
+    // A step is locked ONLY if it's beyond the furthest step reached in the database
+    const isLocked = index > (furthestIndex === -1 ? 0 : furthestIndex) && !isCurrent
+
+    return {
+      ...step,
+      completed: isCompleted,
+      current: isCurrent,
+      locked: isLocked
+    }
+  })
 
   return (
     <aside className="w-64 bg-background border-r border-border overflow-y-auto sticky top-0 h-screen">
@@ -51,7 +113,7 @@ export function StudentSidebar({ currentStep }: StudentSidebarProps) {
               <span className="text-xs text-muted-foreground">{steps.filter(s => s.completed).length} of {steps.length}</span>
             </div>
             <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
-              <div 
+              <div
                 className="bg-gradient-to-r from-primary to-accent h-full transition-all duration-500"
                 style={{ width: `${(steps.filter(s => s.completed).length / steps.length) * 100}%` }}
               />
@@ -78,7 +140,7 @@ export function StudentSidebar({ currentStep }: StudentSidebarProps) {
                 case 'finaldocs': return <CheckSquare {...iconProps} />;
                 case 'visa': return <Shield {...iconProps} />;
                 case 'travel': return <PlaneTakeoff {...iconProps} />;
-                default: return null;
+                default: return <FileText {...iconProps} />;
               }
             };
 

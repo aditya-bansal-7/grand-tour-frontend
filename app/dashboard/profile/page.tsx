@@ -1,14 +1,55 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { StudentLayout } from '@/components/student/student-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { dummyStudentProfile } from '@/lib/student-profile'
-import { Mail, Phone, MapPin, GraduationCap, Calendar } from 'lucide-react'
+import { applicationService } from '@/lib/services/api.service'
+import { Mail, Phone, MapPin, GraduationCap, Calendar, Loader2, User as UserIcon } from 'lucide-react'
+import { toast } from 'sonner'
 
 export default function ProfilePage() {
+  const [application, setApplication] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        const data = await applicationService.getMy()
+        setApplication(data)
+      } catch (error: any) {
+        toast.error('Failed to load profile data')
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    )
+  }
+
+  if (!application) {
+    return (
+      <StudentLayout currentStep={application?.currentStepId}>
+        <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
+          <h1 className="text-2xl font-bold">Profile Not Available</h1>
+          <p className="text-muted-foreground">Please complete your application first.</p>
+        </div>
+      </StudentLayout>
+    )
+  }
+
+  const user = application.user
+
   return (
-    <StudentLayout currentStep={dummyStudentProfile.currentWorkflowStep}>
+    <StudentLayout currentStep={application.currentStepId}>
       <div className="max-w-4xl space-y-6">
         <div className="space-y-2">
           <h1 className="text-3xl font-bold">My Profile</h1>
@@ -17,18 +58,21 @@ export default function ProfilePage() {
 
         {/* Profile Header */}
         <Card className="p-8">
-          <div className="flex items-start justify-between gap-6">
-            <div className="flex items-center gap-6 flex-1">
-              <div className="w-24 h-24 bg-gradient-to-br from-primary to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                <span className="text-4xl font-bold text-white">AK</span>
-              </div>
+          <div className="flex items-start justify-between gap-6 flex-wrap">
+            <div className="flex items-center gap-6 flex-1 min-w-[300px]">
+              {user.profileImage ? (
+                <img src={user.profileImage} alt={user.firstName} className="w-24 h-24 rounded-full object-cover border-4 border-primary/20" />
+              ) : (
+                <div className="w-24 h-24 bg-gradient-to-br from-primary to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-4xl font-bold text-white">{user.firstName[0]}{user.lastName[0]}</span>
+                </div>
+              )}
               <div>
-                <h2 className="text-2xl font-bold text-foreground">{dummyStudentProfile.name}</h2>
-                <p className="text-muted-foreground mt-1">{dummyStudentProfile.department} • {dummyStudentProfile.currentYear}</p>
-                <p className="text-sm text-muted-foreground mt-2">{dummyStudentProfile.collegeName}</p>
+                <h2 className="text-2xl font-bold text-foreground">{user.firstName} {user.lastName}</h2>
+                <p className="text-muted-foreground mt-1">{application.department || 'Student'} • {application.currentYear || 'N/A'}</p>
+                <p className="text-sm text-muted-foreground mt-2">{application.collegeName || 'Grand Tour Student'}</p>
               </div>
             </div>
-            <Button variant="outline">Edit Profile</Button>
           </div>
         </Card>
 
@@ -40,8 +84,8 @@ export default function ProfilePage() {
               <Mail className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Email</p>
-                <a href={`mailto:${dummyStudentProfile.email}`} className="text-foreground hover:underline truncate">
-                  {dummyStudentProfile.email}
+                <a href={`mailto:${user.email}`} className="text-foreground hover:underline truncate">
+                  {user.email}
                 </a>
               </div>
             </div>
@@ -50,9 +94,7 @@ export default function ProfilePage() {
               <Phone className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">WhatsApp</p>
-                <a href={`https://wa.me/${dummyStudentProfile.whatsapp.replace(/\D/g, '')}`} className="text-foreground hover:underline">
-                  {dummyStudentProfile.whatsapp}
-                </a>
+                <p className="text-foreground">{user.whatsapp || application.phone || 'N/A'}</p>
               </div>
             </div>
 
@@ -60,7 +102,7 @@ export default function ProfilePage() {
               <MapPin className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Address</p>
-                <p className="text-foreground">{dummyStudentProfile.address}</p>
+                <p className="text-foreground">{user.address || 'N/A'}, {user.city || 'N/A'}</p>
               </div>
             </div>
 
@@ -68,7 +110,7 @@ export default function ProfilePage() {
               <Calendar className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold text-muted-foreground uppercase">Date of Birth</p>
-                <p className="text-foreground">{dummyStudentProfile.dateOfBirth}</p>
+                <p className="text-foreground">{user.dateOfBirth || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -83,27 +125,27 @@ export default function ProfilePage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">College Name</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.collegeName}</p>
+              <p className="text-foreground font-medium mt-2">{application.collegeName || 'N/A'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">Department</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.department}</p>
+              <p className="text-foreground font-medium mt-2">{application.department || 'N/A'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">Course</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.course}</p>
+              <p className="text-foreground font-medium mt-2">{application.course || 'N/A'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">Current Year</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.currentYear}</p>
+              <p className="text-foreground font-medium mt-2">{application.currentYear || 'N/A'}</p>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Duration</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.duration}</p>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">University</label>
+              <p className="text-foreground font-medium mt-2">{application.universityName || 'N/A'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">TPO Name</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.tpoName}</p>
+              <p className="text-foreground font-medium mt-2">{application.tpoName || 'N/A'}</p>
             </div>
           </div>
         </Card>
@@ -114,28 +156,31 @@ export default function ProfilePage() {
           <div className="grid md:grid-cols-2 gap-6">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">Start Date</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.internshipStartDate}</p>
+              <p className="text-foreground font-medium mt-2">{application.internshipStartDate || 'N/A'}</p>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase">End Date</label>
-              <p className="text-foreground font-medium mt-2">{dummyStudentProfile.internshipEndDate}</p>
+              <p className="text-foreground font-medium mt-2">{application.internshipEndDate || 'N/A'}</p>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase">ID</label>
-              <p className="text-foreground font-medium mt-2 font-mono">{dummyStudentProfile.id}</p>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Duration</label>
+              <p className="text-foreground font-medium mt-2">{application.duration || 'N/A'}</p>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase">Application Status</label>
               <p className="text-foreground font-medium mt-2">
-                <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">Active</span>
+                <span className={`px-2 py-1 text-xs rounded-full ${
+                  application.status === 'ACCEPTED' ? 'bg-green-100 text-green-700' : 
+                  application.status === 'REJECTED' ? 'bg-red-100 text-red-700' : 
+                  'bg-blue-100 text-blue-700'
+                }`}>{application.status}</span>
               </p>
             </div>
           </div>
         </Card>
 
         <div className="flex gap-2">
-          <Button className="gap-2">Save Changes</Button>
-          <Button variant="outline">Download Profile</Button>
+          <Button variant="outline" onClick={() => window.print()}>Download Profile PDF</Button>
         </div>
       </div>
     </StudentLayout>

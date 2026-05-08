@@ -41,6 +41,20 @@ export interface WorkflowStep {
   triggerEmail?: boolean
   emailSubject?: string
   notes?: string
+  isInterviewStep?: boolean
+  
+  // Payment configuration
+  isPaymentStep?: boolean
+  amount?: number
+  gstPercentage?: number
+  discountPercentage?: number
+  paymentConfig?: {
+    accountName: string
+    accountNumber: string
+    ifsc: string
+    bankName: string
+    qrCodeUrl?: string
+  }
 }
 
 export interface Workflow {

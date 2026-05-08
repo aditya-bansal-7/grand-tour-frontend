@@ -9,12 +9,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Search, Eye, ArrowRight, MessageSquare, Check, X, Phone, Mail, Loader2 } from 'lucide-react'
 
-export function CandidatesTable() {
+interface CandidatesTableProps {
+  initialStatus?: 'all' | CandidateStatus
+  title?: string
+}
+
+export function CandidatesTable({ initialStatus = 'all', title }: CandidatesTableProps) {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [workflow, setWorkflow] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState<'all' | CandidateStatus>('all')
+  const [filterStatus, setFilterStatus] = useState<'all' | CandidateStatus>(initialStatus)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [showNotes, setShowNotes] = useState(false)
   const [notes, setNotes] = useState('')
@@ -57,11 +62,28 @@ export function CandidatesTable() {
           currentStep: currentStepName,
           currentStepId: app.currentStepId || '',
           status,
-          paymentStatus: (app.paymentStatus?.toLowerCase() as PaymentStatus) || 'unpaid',
+          paymentStatus: app.paymentStatus === 'COMPLETED' ? 'paid' : (app.paymentStatus?.toLowerCase() as PaymentStatus) || 'unpaid',
           notes: app.notes || '',
           createdAt: new Date(app.createdAt),
           updatedAt: new Date(app.updatedAt),
           attachments: app.resumeUrl ? [app.resumeUrl] : [],
+          
+          // New fields
+          collegeName: app.collegeName,
+          universityName: app.universityName,
+          course: app.course,
+          currentYear: app.currentYear,
+          department: app.department,
+          cgpa: app.cgpa,
+          whatsapp: app.user.whatsapp || app.phone,
+          dateOfBirth: app.user.dateOfBirth,
+          address: app.user.address,
+          city: app.user.city,
+          state: app.user.state,
+          pincode: app.user.pincode,
+          internshipStartDate: app.data?.internshipStartDate, // Note: app.internshipStartDate was dropped
+          internshipEndDate: app.data?.internshipEndDate,
+          additionalData: app.data,
         }
       })
       setCandidates(mappedCandidates)
@@ -143,7 +165,7 @@ export function CandidatesTable() {
       case 'approved':
         return 'bg-green-100 text-green-700'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-700'
+        return 'bg-blue-100 text-blue-700'
       case 'rejected':
         return 'bg-red-100 text-red-700'
     }
@@ -197,32 +219,97 @@ export function CandidatesTable() {
                   <p className="text-foreground">{selectedCandidate.phone || 'N/A'}</p>
                 </div>
               </div>
+            </div>            <div className="grid md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold border-b pb-1">Education Info</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">College:</span>
+                  <span className="text-foreground">{selectedCandidate.collegeName || 'N/A'}</span>
+                  <span className="text-muted-foreground">University:</span>
+                  <span className="text-foreground">{selectedCandidate.universityName || 'N/A'}</span>
+                  <span className="text-muted-foreground">Course:</span>
+                  <span className="text-foreground">{selectedCandidate.course || 'N/A'}</span>
+                  <span className="text-muted-foreground">Current Year:</span>
+                  <span className="text-foreground">{selectedCandidate.currentYear || 'N/A'}</span>
+                  <span className="text-muted-foreground">CGPA:</span>
+                  <span className="text-foreground">{selectedCandidate.cgpa || 'N/A'}</span>
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold border-b pb-1">Internship Details</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">Dept:</span>
+                  <span className="text-foreground">{selectedCandidate.department || 'N/A'}</span>
+                  <span className="text-muted-foreground">Start:</span>
+                  <span className="text-foreground">{selectedCandidate.internshipStartDate || 'N/A'}</span>
+                  <span className="text-muted-foreground">End:</span>
+                  <span className="text-foreground">{selectedCandidate.internshipEndDate || 'N/A'}</span>
+                </div>
+                <h3 className="text-sm font-bold border-b pb-1">Personal Info</h3>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-muted-foreground">DOB:</span>
+                  <span className="text-foreground">{selectedCandidate.dateOfBirth || 'N/A'}</span>
+                  <span className="text-muted-foreground">Whatsapp:</span>
+                  <span className="text-foreground">{selectedCandidate.whatsapp || 'N/A'}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
+            {selectedCandidate.address && (
               <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase">Current Step</label>
-                <p className="font-semibold text-foreground mt-1">{selectedCandidate.currentStep}</p>
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Address</label>
+                <p className="text-sm text-foreground mt-1">
+                  {selectedCandidate.address}, {selectedCandidate.city}, {selectedCandidate.state} - {selectedCandidate.pincode}
+                </p>
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase">Status</label>
-                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getStatusColor(selectedCandidate.status)}`}>
-                  {selectedCandidate.status.charAt(0).toUpperCase() + selectedCandidate.status.slice(1)}
-                </span>
+            )}
+
+            {/* Dynamic Workflow Data */}
+            {selectedCandidate.additionalData && Object.keys(selectedCandidate.additionalData).length > 0 && (
+              <div className="space-y-6 pt-4 border-t border-border">
+                <h3 className="text-lg font-bold text-foreground">Workflow Responses</h3>
+                {Object.entries(selectedCandidate.additionalData).map(([stageName, sections]: [string, any]) => {
+                  // Fallback for flat data
+                  if (typeof sections !== 'object' || sections === null) {
+                    return (
+                      <div key={stageName} className="flex flex-col">
+                        <span className="text-xs font-semibold text-muted-foreground uppercase">{stageName.replace(/([A-Z])/g, ' $1').trim()}</span>
+                        <span className="text-foreground mt-1">{String(sections)}</span>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={stageName} className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-1 h-4 bg-primary rounded-full" />
+                        <h4 className="text-sm font-black uppercase tracking-widest text-primary/80">{stageName}</h4>
+                      </div>
+                      <div className="grid gap-3">
+                        {Object.entries(sections).map(([sectionName, fields]: [string, any]) => (
+                          <Card key={sectionName} className="p-5 bg-secondary/20 border-primary/5 shadow-none">
+                            <h5 className="text-[10px] font-black text-muted-foreground uppercase mb-4 tracking-widest opacity-60">{sectionName}</h5>
+                            <div className="grid md:grid-cols-2 gap-x-8 gap-y-4">
+                              {Object.entries(fields).map(([fieldName, value]: [string, any]) => (
+                                <div key={fieldName} className="space-y-1">
+                                  <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">{fieldName}</label>
+                                  <p className="text-sm font-semibold text-foreground leading-relaxed">{String(value)}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase">Payment</label>
-                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-1 ${getPaymentColor(selectedCandidate.paymentStatus)}`}>
-                  {selectedCandidate.paymentStatus.charAt(0).toUpperCase() +
-                    selectedCandidate.paymentStatus.slice(1).replace(/_/g, ' ')}
-                </span>
-              </div>
-            </div>
+            )}
 
             {selectedCandidate.notes && (
               <div>
-                <label className="text-xs font-semibold text-muted-foreground uppercase">Notes</label>
-                <p className="text-foreground mt-2 p-3 bg-secondary rounded-lg">{selectedCandidate.notes}</p>
+                <label className="text-xs font-semibold text-muted-foreground uppercase">Internal Notes</label>
+                <p className="text-foreground mt-2 p-3 bg-secondary rounded-lg text-sm">{selectedCandidate.notes}</p>
               </div>
             )}
 
@@ -323,6 +410,7 @@ export function CandidatesTable() {
 
   return (
     <div className="space-y-4">
+      {title && <h2 className="text-2xl font-bold text-foreground">{title}</h2>}
       <Card className="p-4 space-y-4">
         <div className="flex gap-2 flex-wrap items-center">
           <div className="flex-1 min-w-[200px] relative">

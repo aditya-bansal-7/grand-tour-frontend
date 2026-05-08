@@ -24,6 +24,10 @@ export const applicationService = {
     const response = await apiClient.get('/api/applications');
     return response.data.data;
   },
+  getMy: async () => {
+    const response = await apiClient.get('/api/applications/my');
+    return response.data.data;
+  },
   create: async (data: any) => {
     const response = await apiClient.post('/api/applications', data);
     return response.data.data;
@@ -49,17 +53,61 @@ export const applicationService = {
 export const interviewService = {
   getAll: async () => {
     const response = await apiClient.get('/api/interviews');
-    return response.data.data;
+    return response.data.data || response.data;
+  },
+  getMy: async () => {
+    const response = await apiClient.get('/api/interviews/my');
+    return response.data.data || response.data;
   },
   schedule: async (data: any) => {
     const response = await apiClient.post('/api/interviews', data);
-    return response.data.data;
+    return response.data.data || response.data;
   },
   delete: async (id: string) => {
     const response = await apiClient.delete(`/api/interviews/${id}`);
     return response.data;
   },
+  // New Slot based endpoints
+  getAvailability: async () => {
+    const response = await apiClient.get('/api/interviews/availability');
+    return response.data;
+  },
+  updateAvailability: async (availability: any[]) => {
+    const response = await apiClient.post('/api/interviews/availability', { availability });
+    return response.data;
+  },
+  getAvailableSlots: async () => {
+    const response = await apiClient.get('/api/interviews/slots/available');
+    return response.data;
+  },
+  generateSlots: async (startDate: string, endDate: string, bufferTime: number = 0) => {
+    const response = await apiClient.post('/api/interviews/slots/generate', { startDate, endDate, bufferTime });
+    return response.data;
+  },
+  addManualSlot: async (startTime: string, endTime: string) => {
+    const response = await apiClient.post('/api/interviews/slots/manual', { startTime, endTime });
+    return response.data;
+  },
+
+  bookSlot: async (slotId: string, applicationId: string) => {
+    const response = await apiClient.post('/api/interviews/slots/book', { slotId, applicationId });
+    return response.data;
+  },
+  getAdminSlots: async () => {
+    const response = await apiClient.get('/api/interviews/slots/admin');
+    return response.data;
+  },
+  updateSlotLink: async (id: string, meetLink: string) => {
+    const response = await apiClient.patch(`/api/interviews/slots/${id}/link`, { meetLink });
+    return response.data;
+  },
+  deleteSlot: async (id: string) => {
+    const response = await apiClient.delete(`/api/interviews/slots/${id}`);
+    return response.data;
+  },
 };
+
+
 
 export const workflowService = {
   get: async () => {
@@ -121,6 +169,10 @@ export const documentService = {
     const response = await apiClient.get('/api/documents');
     return response.data.data;
   },
+  create: async (data: any) => {
+    const response = await apiClient.post('/api/documents', data);
+    return response.data.data;
+  },
   updateStatus: async (id: string, status: string, remarks?: string) => {
     const response = await apiClient.patch(`/api/documents/${id}/status`, { status, remarks });
     return response.data.data;
@@ -129,4 +181,61 @@ export const documentService = {
     const response = await apiClient.delete(`/api/documents/${id}`);
     return response.data;
   }
+};
+
+export const paymentService = {
+  submit: async (data: any) => {
+    const response = await apiClient.post('/api/payments/submit', data);
+    return response.data.data;
+  },
+  getAll: async () => {
+    const response = await apiClient.get('/api/payments');
+    return response.data.data;
+  },
+  updateStatus: async (id: string, status: string) => {
+    const response = await apiClient.patch(`/api/payments/${id}/status`, { status });
+    return response.data.data;
+  },
+};
+
+export const uploadService = {
+  upload: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await apiClient.post('/api/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data.data;
+  }
+};
+
+export const hotelService = {
+  getAll: async () => {
+    const response = await apiClient.get('/api/hotels');
+    return response.data.data;
+  },
+  create: async (data: any) => {
+    const response = await apiClient.post('/api/hotels', data);
+    return response.data.data;
+  },
+  update: async (id: string, data: any) => {
+    const response = await apiClient.put(`/api/hotels/${id}`, data);
+    return response.data.data;
+  },
+  delete: async (id: string) => {
+    const response = await apiClient.delete(`/api/hotels/${id}`);
+    return response.data;
+  },
+  getCandidates: async () => {
+    const response = await apiClient.get('/api/hotels/candidates');
+    return response.data.data;
+  },
+  assign: async (data: { hotelId: string; applicationId: string; checkIn: string; checkOut: string }) => {
+    const response = await apiClient.post('/api/hotels/assign', data);
+    return response.data.data;
+  },
+  getMyAssignment: async () => {
+    const response = await apiClient.get('/api/hotels/my-assignment');
+    return response.data.data;
+  },
 };
