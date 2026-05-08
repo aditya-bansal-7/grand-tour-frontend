@@ -51,10 +51,12 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
   }, [stepId])
 
 
-  const handleSubmit = async (formData: any) => {
+  const handleSubmit = async (formData: any, overrideApp?: any) => {
     console.log('--- DynamicStepPage handleSubmit ---')
     console.log('Step ID:', stepId)
     console.log('Form Data:', formData)
+
+    const currentApp = overrideApp || application
 
     try {
       setSubmitting(true)
@@ -74,7 +76,7 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
         ...(workflow?.steps || [])
       ]
 
-      const currentDBStepIdx = allWorkflowSteps.findIndex(s => s.id === application?.currentStepId)
+      const currentDBStepIdx = allWorkflowSteps.findIndex(s => s.id === currentApp?.currentStepId)
       const targetStepIdx = allWorkflowSteps.findIndex(s => s.id === nextStepId)
       console.log('Index Tracking:', { currentDBStepIdx, targetStepIdx })
 
@@ -98,13 +100,11 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
       console.log('Nested Data Structure:', nestedData)
 
       const updatedPayload = {
-        ...application,
-        data: { ...(application?.data || {}), ...nestedData },
-        status: isFinalStep ? 'PENDING' : (application?.status || 'DRAFT'),
+        ...currentApp,
+        data: { ...(currentApp?.data || {}), ...nestedData },
+        status: isFinalStep ? 'PENDING' : (currentApp?.status || 'DRAFT'),
         // Only advance currentStepId if it's NOT the interview step
-        // Subsequent steps (like payment) will be unlocked by the admin by changing status to ACCEPTED
-        // and manually advancing the currentStepId if needed, or we can handle it here if status is ACCEPTED
-        currentStepId: (targetStepIdx > currentDBStepIdx && !isFinalStep) ? nextStepId : application?.currentStepId
+        currentStepId: (targetStepIdx > currentDBStepIdx && !isFinalStep) ? nextStepId : currentApp?.currentStepId
       }
       console.log('Sending Payload to API:', updatedPayload)
 
@@ -430,11 +430,12 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
                             screenshotUrl,
                             description: `Payment for ${currentStepConfig.name}`
                           })
-                          application.payment1 = payment
-                          applicationService.update(application.id, application)
+                          const updatedApp = { ...application, payment1: payment }
+                          setApplication(updatedApp)
+                          await applicationService.update(updatedApp.id, updatedApp)
                           toast.success('Payment submitted for verification!')
                           // Advance step or show pending state
-                          handleSubmit({ paymentSubmitted: true })
+                          await handleSubmit({ paymentSubmitted: true }, updatedApp)
                         } catch (error) {
                           toast.error('Failed to submit payment')
                         } finally {

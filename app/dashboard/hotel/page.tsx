@@ -14,7 +14,9 @@ import {
   Loader2,
   ChevronRight,
   ExternalLink,
-  Download
+  Download,
+  Clock,
+  CheckCircle2
 } from 'lucide-react'
 import { hotelService, applicationService, paymentService } from '@/lib/services/api.service'
 import { format } from 'date-fns'

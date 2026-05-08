@@ -235,7 +235,6 @@ export function AvailabilityManager() {
                                 value={dayAvail.slotDuration} 
                                 onChange={(e) => handleUpdate(day.value, 'slotDuration', parseInt(e.target.value))}
                                 className="h-9 border-slate-200 focus:border-indigo-500 transition-all text-sm"
-                                suffix="min"
                               />
                               <span className="absolute right-3 top-2.5 text-[10px] font-bold text-slate-400">min</span>
                           </div>

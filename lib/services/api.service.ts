@@ -32,6 +32,10 @@ export const applicationService = {
     const response = await apiClient.post('/api/applications', data);
     return response.data.data;
   },
+  update: async (id: string, data: any) => {
+    const response = await apiClient.patch(`/api/applications/${id}`, data);
+    return response.data.data;
+  },
   updateStatus: async (id: string, status: string) => {
     const response = await apiClient.patch(`/api/applications/${id}/status`, { status });
     return response.data.data;
