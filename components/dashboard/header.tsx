@@ -148,7 +148,7 @@ export function Header({ title, description, actions }: HeaderProps) {
           {status === "loading" ? (
             <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#888" }} />
           ) : (
-            <Avatar className="w-8 h-8 ring-2 ring-offset-1" style={{ ringColor: "#E0E0DA" }}>
+            <Avatar className="w-8 h-8 ring-2 ring-offset-1">
               <AvatarImage src={userImage} alt={fullName} />
               <AvatarFallback
                 className="text-xs font-bold"
