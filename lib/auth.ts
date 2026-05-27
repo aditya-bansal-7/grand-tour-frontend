@@ -13,31 +13,39 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-        isRegister: { type: "boolean" }, // Hidden field to distinguish login/register
+        otp: { label: "OTP", type: "text" },
+        isRegister: { type: "boolean" },
         firstName: { type: "text" },
         lastName: { type: "text" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        if (!credentials?.email) return null;
+        if (!credentials?.password && !credentials?.otp) return null;
 
         const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
-        const endpoint = credentials.isRegister === "true" ? "/api/auth/register" : "/api/auth/login";
+        
+        // Determine endpoint
+        let endpoint = "/api/auth/login";
+        if (credentials.isRegister === "true") endpoint = "/api/auth/register";
+        else if (credentials.otp) endpoint = "/api/auth/verify-otp";
 
         console.log(`Attempting auth at: ${baseUrl}${endpoint}`);
 
         try {
           const isReg = credentials.isRegister === "true";
-          const body = isReg 
-            ? {
-                email: credentials.email,
-                password: credentials.password,
-                firstName: credentials.firstName,
-                lastName: credentials.lastName,
-              }
-            : {
-                email: credentials.email,
-                password: credentials.password,
-              };
+          const isOtp = !!credentials.otp;
+
+          let body: any = { email: credentials.email };
+          
+          if (isReg) {
+            body.password = credentials.password;
+            body.firstName = credentials.firstName;
+            body.lastName = credentials.lastName;
+          } else if (isOtp) {
+            body.otp = credentials.otp;
+          } else {
+            body.password = credentials.password;
+          }
 
           const res = await fetch(`${baseUrl}${endpoint}`, {
             method: "POST",

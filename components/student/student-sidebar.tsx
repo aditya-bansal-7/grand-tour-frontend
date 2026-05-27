@@ -23,7 +23,7 @@ import {
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+  // { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: Sparkles, label: 'Application', href: '/dashboard/application' },
   { icon: FileText, label: 'Documents', href: '/dashboard/documents' },
   { icon: Calendar, label: 'Interview Hub', href: '/dashboard/interview' },
@@ -42,14 +42,14 @@ export function StudentSidebar({ currentStep }: { currentStep?: string }) {
   return (
     <aside
       className="fixed top-0 left-0 w-56 h-screen flex flex-col lg:block"
-      style={{ backgroundColor: '#141414', borderRight: '1px solid #222' }}
+      style={{ backgroundColor: '#F5F5F0', borderRight: '1px solid #222' }}
     >
       {/* Brand */}
       <div className="px-5 pt-6 pb-4">
         <Link href="/" className="block">
           <p
             className="text-xl font-bold tracking-tight leading-none"
-            style={{ color: '#CCFF00', fontFamily: 'Gilroy, sans-serif' }}
+            style={{ color: '#000', fontFamily: 'Gilroy, sans-serif' }}
           >
             Grand Tour
           </p>
@@ -82,7 +82,7 @@ export function StudentSidebar({ currentStep }: { currentStep?: string }) {
                 )}
                 style={
                   isActive
-                    ? { backgroundColor: '#CCFF00', color: '#111' }
+                    ? { backgroundColor: '#D0FB3B', color: '#111' }
                     : { color: '#777' }
                 }
               >
@@ -91,7 +91,7 @@ export function StudentSidebar({ currentStep }: { currentStep?: string }) {
                 {item.badge && !isActive && (
                   <span
                     className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={{ backgroundColor: '#CCFF00', color: '#111' }}
+                    style={{ backgroundColor: '#D0FB3B', color: '#111' }}
                   >
                     {item.badge}
                   </span>
@@ -102,18 +102,10 @@ export function StudentSidebar({ currentStep }: { currentStep?: string }) {
         </nav>
       </div>
 
+      <hr />
       {/* Bottom section */}
-      <div className="px-3 pb-6 space-y-3">
-        {/* New Entry CTA */}
-        <Link
-          href="/dashboard/application"
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
-          style={{ backgroundColor: '#CCFF00', color: '#111' }}
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New Entry
-        </Link>
-
+      <div className="px-3 pb-6 py-5 space-y-10">
+  
         {/* Settings & Support */}
         <div className="space-y-0.5">
           <Link
