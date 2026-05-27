@@ -162,8 +162,9 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen bg-[#FAFAFA] font-sans">
-      {/* Sidebar */}
-      <div className="w-[260px] bg-[#FAFAFA] flex flex-col h-screen py-8 px-4 relative z-20 shadow-2xl">
+
+      {/* ── Sidebar (desktop only) ── */}
+      <div className="hidden lg:flex w-[260px] bg-[#FAFAFA] flex-col h-screen py-8 px-4 relative z-20 shadow-2xl shrink-0">
         <div className="flex items-center gap-3 px-2 mb-10">
           <div className="w-10 h-10 rounded-lg bg-[#C6F16D] flex items-center justify-center text-black shadow-[0_0_15px_rgba(198,241,109,0.3)]">
             <Sparkles className="w-5 h-5" fill="currentColor" />
@@ -187,16 +188,29 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center">
-        {/* Background Aesthetics */}
-        <div className="absolute top-[-10%] right-[10%] w-[600px] h-[600px] bg-[#E1F0C4]/40 rounded-full blur-[100px] mix-blend-multiply pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[20%] w-[500px] h-[500px] bg-[#F4E6E6]/60 rounded-full blur-[100px] mix-blend-multiply pointer-events-none" />
-        
-        <div className="w-full max-w-[1000px] px-8 flex justify-between items-center gap-12 relative z-10">
-          
-          {/* Left Text Column */}
-          <div className="max-w-[460px]">
+      {/* ── Main Content ── */}
+      <div className="flex-1 relative overflow-hidden flex flex-col lg:flex-row items-center justify-center">
+
+        {/* Background blobs */}
+        <div className="absolute top-[-10%] right-[10%] w-[400px] md:w-[600px] h-[400px] md:h-[600px] bg-[#E1F0C4]/40 rounded-full blur-[100px] mix-blend-multiply pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[300px] md:w-[500px] h-[300px] md:h-[500px] bg-[#F4E6E6]/60 rounded-full blur-[100px] mix-blend-multiply pointer-events-none" />
+
+        {/* ── Mobile top bar (replaces sidebar on small screens) ── */}
+        <div className="lg:hidden flex items-center gap-3 w-full px-6 pt-6 pb-2 relative z-10">
+          <div className="w-9 h-9 rounded-lg bg-[#C6F16D] flex items-center justify-center text-black shadow-[0_0_15px_rgba(198,241,109,0.3)]">
+            <Sparkles className="w-4 h-4" fill="currentColor" />
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-xs tracking-wide leading-tight">ACADEMIC CURATOR</span>
+            <span className="text-[9px] text-gray-500 font-bold tracking-widest">EDITORIAL JOURNEY</span>
+          </div>
+        </div>
+
+        {/* ── Inner wrapper: stacked on mobile, side-by-side on lg ── */}
+        <div className="w-full max-w-[1000px] px-4 sm:px-8 flex flex-col lg:flex-row justify-between items-center gap-8 lg:gap-12 relative z-10 py-6 lg:py-0">
+
+          {/* ── Left Text Column (hidden on mobile, shown on lg) ── */}
+          <div className="hidden lg:block max-w-[460px]">
             <div className="bg-[#EDDCFF] text-[#8B48F6] text-[10px] font-bold tracking-widest px-3 py-1.5 rounded-full w-fit mb-6 uppercase shadow-sm">
               Student Portal
             </div>
@@ -226,12 +240,44 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Right Login Box - Flipping Card Mechanism */}
-          <div className="w-[400px] h-[680px] shrink-0 [perspective:1500px]">
-            <div className={`relative w-full h-full transition-transform duration-700 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
+          {/* ── Mobile hero text (above the card, visible only on mobile/tablet) ── */}
+          <div className="lg:hidden w-full text-center px-2">
+            <div className="bg-[#EDDCFF] text-[#8B48F6] text-[10px] font-bold tracking-widest px-3 py-1.5 rounded-full w-fit mx-auto mb-4 uppercase shadow-sm">
+              Student Portal
+            </div>
+            <h1 className="text-[36px] sm:text-[48px] leading-[1.1] font-semibold text-[#1A1A1A] tracking-tight mb-3">
+              Begin Your{" "}
+              <span className="text-[#4D6B19] font-bold">Editorial</span>{" "}
+              <span className="font-bold">Journey.</span>
+            </h1>
+            <p className="text-[#666666] text-sm sm:text-base mb-6 leading-relaxed max-w-[480px] mx-auto">
+              Access your curated internship paths and academic milestones through our secure student gateway.
+            </p>
+            {/* Compact stats row on mobile */}
+            <div className="flex gap-3 justify-center mb-6">
+              <div className="bg-white rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 flex items-center gap-3">
+                <GraduationCap className="w-5 h-5 text-[#4D6B19] shrink-0" />
+                <div>
+                  <div className="text-lg font-bold text-[#1A1A1A] leading-none">1,200+</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Partners</div>
+                </div>
+              </div>
+              <div className="bg-white rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 flex items-center gap-3">
+                <Globe2 className="w-5 h-5 text-[#8B48F6] shrink-0" />
+                <div>
+                  <div className="text-lg font-bold text-[#1A1A1A] leading-none">45</div>
+                  <div className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">Countries</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Login Card – Flipping Card Mechanism ── */}
+          <div className="w-full max-w-[420px] lg:w-[400px] lg:max-w-none min-h-[600px] lg:h-[680px] shrink-0 [perspective:1500px]">
+            <div className={`relative w-full h-full min-h-[600px] lg:min-h-0 transition-transform duration-700 [transform-style:preserve-3d] ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}>
               
               {/* FRONT SIDE (Login or Register) */}
-              <div className={`absolute w-full h-full [backface-visibility:hidden] bg-white rounded-[2rem] p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col`}>
+              <div className={`absolute w-full h-full [backface-visibility:hidden] bg-white rounded-[2rem] p-6 sm:p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col`}>
                 
                 {view === 'login' && (
                   <>
@@ -405,13 +451,13 @@ export default function Home() {
               </div>
               
               {/* BACK SIDE (OTP) */}
-              <div className="absolute w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-white rounded-[2rem] p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col justify-between">
+              <div className="absolute w-full h-full [backface-visibility:hidden] [transform:rotateY(180deg)] bg-white rounded-[2rem] p-6 sm:p-10 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col justify-between">
                 
                 <div className="text-left mb-8">
                   <button 
                     onClick={() => {
                       setIsFlipped(false);
-                      setTimeout(() => setView('login'), 500); // reset view after flip animation
+                      setTimeout(() => setView('login'), 500);
                     }}
                     className="flex items-center gap-1 text-[13px] text-[#808080] hover:text-[#1A1A1A] transition-colors mb-6 font-medium"
                   >
