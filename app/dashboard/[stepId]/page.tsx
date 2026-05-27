@@ -16,6 +16,7 @@ import UploadPopup from '@/components/UploadPopup'
 import { useSession } from 'next-auth/react'
 import { paymentService } from '@/lib/services/api.service'
 import { Input } from '@/components/ui/input'
+import { ProfileBuilderStep } from '@/components/student/profile-builder-step'
 
 export default function DynamicStepPage({ params }: { params: Promise<{ stepId: string }> }) {
   const router = useRouter()
@@ -484,6 +485,13 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
 
             </Card>
           </div>
+        ) : (stepId === 'application' || currentStepConfig.name.toLowerCase().includes('profile')) ? (
+          <ProfileBuilderStep 
+            application={application}
+            currentStepConfig={currentStepConfig}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+          />
         ) : currentStepConfig.fields && currentStepConfig.fields.length > 0 ? (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Stage Requirements</h2>

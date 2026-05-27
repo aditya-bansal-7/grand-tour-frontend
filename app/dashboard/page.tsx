@@ -7,10 +7,12 @@ import { Button } from '@/components/ui/button'
 import { applicationService, notificationService, workflowService } from '@/lib/services/api.service'
 import { getWorkflowSteps } from '@/lib/student-workflow'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle, Clock, Zap, ArrowRight, FileText, Calendar, HelpCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function StudentDashboard() {
+  const router = useRouter()
   const [application, setApplication] = useState<any>(null)
   const [workflow, setWorkflow] = useState<any>(null)
   const [notifications, setNotifications] = useState<any[]>([])
@@ -47,16 +49,11 @@ export default function StudentDashboard() {
   }
 
   if (!application) {
+    router.push('/dashboard/application')
     return (
-      <StudentLayout currentStep={application?.currentStepId}>
-        <div className="max-w-2xl mx-auto py-12 text-center space-y-4">
-          <h1 className="text-2xl font-bold">Welcome to Grand Tour</h1>
-          <p className="text-muted-foreground">You haven&apos;t started an application yet.</p>
-          <Link href="/dashboard/application">
-            <Button>Start Your Application</Button>
-          </Link>
-        </div>
-      </StudentLayout>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+      </div>
     )
   }
 

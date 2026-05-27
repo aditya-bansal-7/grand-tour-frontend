@@ -1,16 +1,15 @@
 "use client"
 
-import { useState } from "react"
-import { Search, Mail, Bell, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect } from "react"
+import { Search, Bell, Moon, Sun, Loader2 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { MobileNav } from "./mobile-nav"
 import { SearchModal } from "@/components/search/search-modal"
 import { NotificationsModal } from "@/components/notifications/notifications-modal"
 import { useSession } from "next-auth/react"
-import { useEffect } from "react"
 import { notificationService } from "@/lib/services/api.service"
+import { usePathname } from "next/navigation"
+import Link from "next/link"
 import type { ReactNode } from "react"
 
 interface HeaderProps {
@@ -24,102 +23,180 @@ export function Header({ title, description, actions }: HeaderProps) {
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [showNotificationsModal, setShowNotificationsModal] = useState(false)
   const [hasUnread, setHasUnread] = useState(false)
+  const [darkMode, setDarkMode] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     const checkUnread = async () => {
       try {
         const notes = await notificationService.getAll()
         setHasUnread(notes.some((n: any) => !n.isRead))
-      } catch (error) {
-        // Silent error
+      } catch {
+        // Silent
       }
     }
     checkUnread()
-    
-    // Check every minute
     const interval = setInterval(checkUnread, 60000)
     return () => clearInterval(interval)
   }, [])
 
   const user = session?.user as any
-  const fullName = user ? `${user.firstName || user.name} ${user.lastName || ''}`.trim() : "Loading..."
-  const userRole = user?.role || "USER"
+  const fullName = user ? `${user.firstName || user.name} ${user.lastName || ""}`.trim() : "Loading..."
   const userImage = user?.image || user?.profileImage
 
-  return (
-    <header className="space-y-3 md:space-y-4 animate-slide-in-up">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-1">
-          <MobileNav />
+  const isReports = pathname.startsWith("/admin/reports")
+  const isDirectives = !isReports
 
-          <div className="relative flex-1 max-w-md cursor-pointer" onClick={() => setShowSearchModal(true)}>
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search candidates, workflows..."
-              className="pl-9 pr-3 md:pr-16 h-9 text-sm bg-card border-border transition-all duration-300 focus:shadow-lg focus:shadow-primary/10"
-              readOnly
-            />
-            <kbd className="hidden md:inline-block absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground bg-muted rounded border border-border">
-              ⌘K
-            </kbd>
+  return (
+    <>
+      {/* ── Topbar ─────────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between gap-4 px-6 py-3 border-b"
+        style={{
+          backgroundColor: "#F7F7F2",
+          borderColor: "#E8E8E2",
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+        }}
+      >
+        {/* Left: Brand label + Mobile nav */}
+        <div className="flex items-center gap-3">
+          <MobileNav />
+          <span
+            className="text-sm font-bold tracking-tight hidden sm:block"
+            style={{ color: "#111", fontFamily: "Gilroy, sans-serif" }}
+          >
+            Admin Portal
+          </span>
+        </div>
+
+        {/* Center: Global Search */}
+        <div
+          className="flex-1 max-w-xs cursor-pointer relative"
+          onClick={() => setShowSearchModal(true)}
+        >
+          <div
+            className="flex items-center gap-2 px-3 py-2 rounded-full text-xs transition-all duration-200 hover:shadow-sm"
+            style={{
+              backgroundColor: "#EDEDEA",
+              color: "#888",
+              border: "1px solid #E0E0DA",
+            }}
+          >
+            <Search className="w-3.5 h-3.5 shrink-0" />
+            <span>Global Search...</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 md:gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-secondary transition-all duration-300 hover:scale-110 h-8 w-8"
-            title="Messages"
-          >
-            <Mail className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative hover:bg-secondary transition-all duration-300 hover:scale-110 h-8 w-8"
-            title="Notifications"
+        {/* Right: Nav tabs + icons */}
+        <div className="flex items-center gap-5">
+          {/* Nav Tabs */}
+          <div className="hidden md:flex items-center gap-5">
+            <Link
+              href="/admin"
+              className="text-xs font-bold tracking-widest uppercase transition-colors duration-200 pb-0.5"
+              style={{
+                color: isDirectives ? "#111" : "#999",
+                borderBottom: isDirectives ? "2px solid #111" : "2px solid transparent",
+              }}
+            >
+              Directives
+            </Link>
+            <Link
+              href="/admin/reports"
+              className="text-xs font-bold tracking-widest uppercase transition-colors duration-200 pb-0.5"
+              style={{
+                color: isReports ? "#CCFF00" : "#999",
+                borderBottom: isReports ? "2px solid #CCFF00" : "2px solid transparent",
+              }}
+            >
+              Reports
+            </Link>
+          </div>
+
+          {/* Divider */}
+          <div className="h-5 w-px hidden md:block" style={{ backgroundColor: "#DDD" }} />
+
+          {/* Bell */}
+          <button
+            id="admin-notifications-btn"
             onClick={() => setShowNotificationsModal(true)}
+            className="relative transition-all duration-200 hover:scale-110"
+            style={{ color: "#555" }}
           >
             <Bell className="w-4 h-4" />
             {hasUnread && (
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-destructive rounded-full animate-pulse" />
+              <span
+                className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ backgroundColor: "#FF4444" }}
+              />
             )}
-          </Button>
+          </button>
 
-          <div className="flex items-center gap-2 pl-2 md:pl-3 border-l border-border">
-            {status === "loading" ? (
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            ) : (
-              <>
-                <Avatar className="w-7 h-7 md:w-8 md:h-8 ring-2 ring-primary/20 transition-all duration-300 hover:ring-primary/40">
-                  <AvatarImage src={userImage} alt={fullName} />
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
-                    {fullName.split(" ").map(n => n[0]).join("").toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="text-xs hidden sm:block">
-                  <p className="font-semibold text-foreground truncate max-w-[120px]">{fullName}</p>
-                  <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                    <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-tight">{userRole}</p>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
+          {/* Dark mode toggle */}
+          <button
+            id="admin-darkmode-btn"
+            onClick={() => setDarkMode(!darkMode)}
+            className="transition-all duration-200 hover:scale-110"
+            style={{ color: "#555" }}
+          >
+            {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Avatar */}
+          {status === "loading" ? (
+            <Loader2 className="w-4 h-4 animate-spin" style={{ color: "#888" }} />
+          ) : (
+            <Avatar className="w-8 h-8 ring-2 ring-offset-1" style={{ ringColor: "#E0E0DA" }}>
+              <AvatarImage src={userImage} alt={fullName} />
+              <AvatarFallback
+                className="text-xs font-bold"
+                style={{ backgroundColor: "#CCFF00", color: "#111" }}
+              >
+                {fullName
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          )}
         </div>
       </div>
 
-      <div>
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-foreground mb-1">{title}</h1>
-        <p className="text-xs md:text-sm text-muted-foreground">{description}</p>
+      {/* ── Page heading ───────────────────────────────────────── */}
+      <div className="px-6 pt-6 pb-4 animate-slide-in-up">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h1
+              className="text-3xl font-bold tracking-tight mb-1"
+              style={{ color: "#111", fontFamily: "Gilroy, sans-serif" }}
+            >
+              {title}
+            </h1>
+            <p className="text-sm" style={{ color: "#888" }}>
+              {description}
+            </p>
+          </div>
+          {actions && (
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {actions}
+            </div>
+          )}
+        </div>
       </div>
 
-      {actions && <div className="flex flex-col sm:flex-row gap-2">{actions}</div>}
-      
-      {showSearchModal && <SearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />}
-      {showNotificationsModal && <NotificationsModal isOpen={showNotificationsModal} onClose={() => setShowNotificationsModal(false)} />}
-    </header>
+      {/* Modals */}
+      {showSearchModal && (
+        <SearchModal isOpen={showSearchModal} onClose={() => setShowSearchModal(false)} />
+      )}
+      {showNotificationsModal && (
+        <NotificationsModal
+          isOpen={showNotificationsModal}
+          onClose={() => setShowNotificationsModal(false)}
+        />
+      )}
+    </>
   )
 }

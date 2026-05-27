@@ -2,26 +2,34 @@ import { Sidebar } from "@/components/dashboard/sidebar"
 import { Header } from "@/components/dashboard/header"
 import { CRMDashboard } from "@/components/dashboard/crm-dashboard"
 import { Button } from "@/components/ui/button"
+import Link from "next/link"
 
 export default function DashboardPage() {
   return (
-    <div className="flex min-h-screen bg-background">
-      <div className="hidden lg:block">
-        <Sidebar />
-      </div>
+    <div className="flex min-h-screen" style={{ backgroundColor: "#F7F7F2" }}>
+      {/* Sidebar */}
+      <div className="hidden lg:block w-56 shrink-0" />
+      <Sidebar />
 
-      <main className="flex-1 p-3 md:p-4 lg:p-5 lg:ml-64">
+      {/* Main content */}
+      <main className="flex-1 min-w-0">
         <Header
-          title="Dashboard"
-          description="CRM Admin - Manage candidates through custom workflows"
+          title="Institutional Pulse"
+          description="Comprehensive analysis of current enrollment trajectories and fiscal performance for Q3 Academic Cycle."
           actions={
             <>
-              <Button className="w-full sm:w-auto h-9 text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300 hover:shadow-lg hover:shadow-primary/30 hover:scale-105">
-                + New Candidate
-              </Button>
+              <Link href="/admin/candidates">
+                <Button
+                  className="h-9 text-sm font-bold rounded-full px-5 transition-all duration-200 hover:opacity-90 hover:scale-105"
+                  style={{ backgroundColor: "#CCFF00", color: "#111", border: "none" }}
+                >
+                  + New Candidate
+                </Button>
+              </Link>
               <Button
                 variant="outline"
-                className="w-full sm:w-auto h-9 text-sm transition-all duration-300 hover:shadow-md hover:scale-105 bg-transparent"
+                className="h-9 text-sm rounded-full px-5 transition-all duration-200 hover:scale-105"
+                style={{ borderColor: "#DDD", color: "#555", backgroundColor: "transparent" }}
               >
                 Export Report
               </Button>

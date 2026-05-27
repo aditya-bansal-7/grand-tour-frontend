@@ -27,7 +27,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
   if (status === 'unauthenticated') return null
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen" style={{ backgroundColor: "#F7F7F2" }}>
       <div className="hidden lg:block">
         <Sidebar />
       </div>

@@ -1,207 +1,162 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { workflowService, applicationService } from '@/lib/services/api.service'
-import { cn } from '@/lib/utils'
-import {
-  GraduationCap,
-  CheckCircle2,
-  ChevronRight,
-  Lock,
-  User,
-  HelpCircle,
-  FileText,
-  Calendar,
-  DollarSign,
-  Building2,
-  CheckSquare,
-  Shield,
-  PlaneTakeoff,
-  LogOut
-} from 'lucide-react'
 import { signOut } from 'next-auth/react'
+import {
+  Sparkles,
+  Calendar,
+  ShieldCheck,
+  Banknote,
+  Settings,
+  HelpCircle,
+  Plus,
+  LogOut,
+  LayoutDashboard,
+  FileText,
+  Plane,
+  Building2,
+  Stamp,
+  Briefcase,
+  ClipboardCheck,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-interface StudentSidebarProps {
-  currentStep: string
-}
+const NAV_ITEMS = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+  { icon: Sparkles, label: 'Application', href: '/dashboard/application' },
+  { icon: FileText, label: 'Documents', href: '/dashboard/documents' },
+  { icon: Calendar, label: 'Interview Hub', href: '/dashboard/interview' },
+  { icon: ShieldCheck, label: 'Offers & Selection', href: '/dashboard/selection' },
+  { icon: Banknote, label: 'Financial Center', href: '/dashboard/payment1', badge: 'New' },
+  { icon: ClipboardCheck, label: 'Contract', href: '/dashboard/contract' },
+  { icon: Stamp, label: 'Visa', href: '/dashboard/visa' },
+  { icon: Briefcase, label: 'Work Permit', href: '/dashboard/workpermit' },
+  { icon: Plane, label: 'Travel', href: '/dashboard/travel' },
+  { icon: Building2, label: 'Hotel', href: '/dashboard/hotel' },
+]
 
-export function StudentSidebar({ currentStep }: StudentSidebarProps) {
+export function StudentSidebar({ currentStep }: { currentStep?: string }) {
   const pathname = usePathname()
-  const [workflow, setWorkflow] = useState<any>(null)
-  const [application, setApplication] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [wfData, appData] = await Promise.all([
-          workflowService.get(),
-          applicationService.getMy()
-        ])
-        setWorkflow(wfData)
-        setApplication(appData)
-      } catch (error) {
-        console.error('Failed to fetch sidebar data')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchData()
-  }, [currentStep])
-
-  // Add dynamic steps from workflow
-  const dynamicSteps = (workflow?.steps || [])
-    .map((s: any) => ({
-      id: s.id,
-      title: s.name,
-      description: s.description
-    }))
-
-  const allSteps = [...dynamicSteps]
-
-  // The step the user is CURRENTLY viewing on the screen
-  const viewIndex = allSteps.findIndex(s => s.id === currentStep || pathname.includes(s.id))
-  
-  // The step the user has REACHED in the database
-  const dbStepId = application?.currentStepId || 'application'
-  let furthestIndex = allSteps.findIndex(s => s.id === dbStepId)
-
-  // If approved, ensure at least the step after interview is unlocked
-  if (application?.status === 'ACCEPTED') {
-    const interviewIdx = (workflow?.steps || []).findIndex((s: any) => 
-      s.isInterviewStep || s.id === 'interview' || s.id.includes('interview')
-    )
-    if (furthestIndex <= interviewIdx && interviewIdx !== -1) {
-      furthestIndex = interviewIdx + 1
-    }
-  }
-
-  const steps = allSteps.map((step, index) => {
-    const isCurrent = step.id === dbStepId
-    const isCompleted = index < furthestIndex
-    // A step is locked ONLY if it's beyond the furthest step reached in the database
-    const isLocked = index > (furthestIndex === -1 ? 0 : furthestIndex) && !isCurrent
-
-    return {
-      ...step,
-      completed: isCompleted,
-      current: isCurrent,
-      locked: isLocked
-    }
-  })
 
   return (
-    <aside className="w-64 bg-background border-r border-border overflow-y-auto sticky top-0 h-screen">
-      <div className="p-6 space-y-8">
-        {/* Logo */}
-        <Link href="/student" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center transition-all group-hover:shadow-lg group-hover:scale-105">
-            <GraduationCap className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <div className="flex flex-col">
-            <span className="font-bold text-foreground text-sm">Internship</span>
-            <span className="text-xs text-muted-foreground">Portal</span>
-          </div>
+    <aside
+      className="fixed top-0 left-0 w-56 h-screen flex flex-col lg:block"
+      style={{ backgroundColor: '#141414', borderRight: '1px solid #222' }}
+    >
+      {/* Brand */}
+      <div className="px-5 pt-6 pb-4">
+        <Link href="/" className="block">
+          <p
+            className="text-xl font-bold tracking-tight leading-none"
+            style={{ color: '#CCFF00', fontFamily: 'Gilroy, sans-serif' }}
+          >
+            Grand Tour
+          </p>
+          <p
+            className="text-[10px] tracking-widest uppercase mt-0.5"
+            style={{ color: '#555' }}
+          >
+            Command Center
+          </p>
         </Link>
+      </div>
 
-        {/* Progress Overview */}
-        <div className="p-4 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl border border-primary/10 space-y-3">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Your Progress</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-baseline">
-              <span className="text-2xl font-bold text-foreground">{Math.round((steps.filter(s => s.completed).length / steps.length) * 100)}%</span>
-              <span className="text-xs text-muted-foreground">{steps.filter(s => s.completed).length} of {steps.length}</span>
-            </div>
-            <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
-              <div
-                className="bg-gradient-to-r from-primary to-accent h-full transition-all duration-500"
-                style={{ width: `${(steps.filter(s => s.completed).length / steps.length) * 100}%` }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Workflow Steps */}
-        <nav className="space-y-2">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Workflow Steps</h3>
-          {steps.map((step) => {
-            const getIcon = (stepId: string) => {
-              const iconProps = { className: 'w-4 h-4' };
-              switch (stepId) {
-                case 'application': return <FileText {...iconProps} />;
-                case 'documents': return <CheckSquare {...iconProps} />;
-                case 'interview': return <Calendar {...iconProps} />;
-                case 'selection': return <CheckCircle2 {...iconProps} />;
-                case 'payment1': return <DollarSign {...iconProps} />;
-                case 'hotel': return <Building2 {...iconProps} />;
-                case 'contract': return <FileText {...iconProps} />;
-                case 'payment2': return <DollarSign {...iconProps} />;
-                case 'workpermit': return <Shield {...iconProps} />;
-                case 'finaldocs': return <CheckSquare {...iconProps} />;
-                case 'visa': return <Shield {...iconProps} />;
-                case 'travel': return <PlaneTakeoff {...iconProps} />;
-                default: return <FileText {...iconProps} />;
-              }
-            };
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4">
+        <nav className="space-y-0.5">
+          {NAV_ITEMS.map((item) => {
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/dashboard' && pathname.startsWith(item.href))
 
             return (
               <Link
-                key={step.id}
-                href={`/dashboard/${step.id}`}
+                key={item.label}
+                href={item.href}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group',
-                  step.completed && 'bg-success/8 hover:bg-success/12 border border-success/20',
-                  step.current && 'bg-primary/8 border border-primary/30 hover:bg-primary/12 shadow-sm',
-                  step.locked && 'opacity-50 cursor-not-allowed pointer-events-none',
-                  !step.completed && !step.current && !step.locked && 'hover:bg-secondary'
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-all duration-200',
+                  isActive
+                    ? 'text-black'
+                    : 'hover:bg-white/5'
                 )}
+                style={
+                  isActive
+                    ? { backgroundColor: '#CCFF00', color: '#111' }
+                    : { color: '#777' }
+                }
               >
-                <div className="flex-shrink-0">
-                  {step.completed && <CheckCircle2 className="w-4 h-4 text-success" />}
-                  {step.current && <ChevronRight className="w-4 h-4 text-primary" />}
-                  {step.locked && <Lock className="w-4 h-4 text-muted-foreground" />}
-                  {!step.completed && !step.current && !step.locked && getIcon(step.id)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    'text-sm font-medium truncate',
-                    step.completed && 'text-success/80',
-                    step.current && 'text-primary font-semibold',
-                    step.locked && 'text-muted-foreground/60',
-                    !step.completed && !step.current && !step.locked && 'text-foreground'
-                  )}>
-                    {step.title}
-                  </p>
-                </div>
-                {step.current && <span className="flex-shrink-0 text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full font-medium">Active</span>}
+                <item.icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.badge && !isActive && (
+                  <span
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ backgroundColor: '#CCFF00', color: '#111' }}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             )
           })}
         </nav>
+      </div>
 
-        {/* Help Section */}
-        <div className="pt-4 border-t border-border space-y-3">
-          <Link href="/dashboard/profile" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors p-2.5 rounded-lg hover:bg-secondary group">
-            <User className="w-4 h-4 group-hover:text-primary transition-colors" />
-            <span>My Profile</span>
-          </Link>
-          <Link href="/dashboard/faq" className="flex items-center gap-3 text-sm text-muted-foreground hover:text-foreground transition-colors p-2.5 rounded-lg hover:bg-secondary group">
-            <HelpCircle className="w-4 h-4 group-hover:text-primary transition-colors" />
-            <span>FAQ & Help</span>
-          </Link>
-          <button 
-            onClick={() => signOut({ callbackUrl: '/' })}
-            className="flex items-center gap-3 text-sm text-red-500 hover:text-red-600 transition-colors p-2.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/20 group w-full text-left"
+      {/* Bottom section */}
+      <div className="px-3 pb-6 space-y-3">
+        {/* New Entry CTA */}
+        <Link
+          href="/dashboard/application"
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-200 hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]"
+          style={{ backgroundColor: '#CCFF00', color: '#111' }}
+        >
+          <Plus className="w-3.5 h-3.5" />
+          New Entry
+        </Link>
+
+        {/* Settings & Support */}
+        <div className="space-y-0.5">
+          <Link
+            href="/dashboard/profile"
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-all duration-200',
+              pathname === '/dashboard/profile' ? 'text-black' : 'hover:bg-white/5'
+            )}
+            style={
+              pathname === '/dashboard/profile'
+                ? { backgroundColor: '#CCFF00', color: '#111' }
+                : { color: '#555' }
+            }
           >
-            <LogOut className="w-4 h-4 group-hover:scale-110 transition-transform" />
-            <span>Sign Out</span>
+            <Settings className="w-3.5 h-3.5 shrink-0" />
+            <span>Settings</span>
+          </Link>
+
+          <Link
+            href="/dashboard/faq"
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-all duration-200',
+              pathname === '/dashboard/faq' ? 'text-black' : 'hover:bg-white/5'
+            )}
+            style={
+              pathname === '/dashboard/faq'
+                ? { backgroundColor: '#CCFF00', color: '#111' }
+                : { color: '#555' }
+            }
+          >
+            <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+            <span>Support</span>
+          </Link>
+
+          {/* Sign out */}
+          <button
+            onClick={() => signOut({ callbackUrl: '/' })}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-all duration-200 hover:bg-white/5 text-left"
+            style={{ color: '#555' }}
+          >
+            <LogOut className="w-3.5 h-3.5 shrink-0" />
+            <span>Log Out</span>
           </button>
-          <div className="text-xs text-muted-foreground space-y-2 p-3 bg-primary/5 border border-primary/10 rounded-lg">
-            <p className="font-semibold text-foreground text-xs uppercase tracking-wider">Support</p>
-            <p className="leading-relaxed">Have questions? Contact us via WhatsApp or email for instant help</p>
-          </div>
         </div>
       </div>
     </aside>
