@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { StudentLayout } from '@/components/student/student-layout'
-import { applicationService, workflowService } from '@/lib/services/api.service'
+import { applicationPageContentService, applicationService, workflowService } from '@/lib/services/api.service'
 import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -12,6 +12,7 @@ export default function ApplicationPage() {
   const router = useRouter()
   const [application, setApplication] = useState<any>(null)
   const [workflow, setWorkflow] = useState<any>(null)
+  const [pageContent, setPageContent] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -19,18 +20,22 @@ export default function ApplicationPage() {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [appData, wfData] = await Promise.all([
+        const [appData, wfData, contentData] = await Promise.all([
           applicationService.getMy(),
-          workflowService.get()
+          workflowService.get(),
+          applicationPageContentService.get('application')
         ])
+
         setApplication(appData)
         setWorkflow(wfData)
+        setPageContent(contentData)
       } catch (error: any) {
         toast.error('Failed to load application data')
       } finally {
         setLoading(false)
       }
     }
+
     fetchData()
   }, [])
 
@@ -41,13 +46,12 @@ export default function ApplicationPage() {
 
       const appPayload = overrideApp || application || {}
 
-      // Determine next step
       let nextStepId = 'application'
       if (workflow?.steps && workflow.steps.length > 0) {
-        // Find application step
-        const currentStepIdx = workflow.steps.findIndex((s: any) => 
+        const currentStepIdx = workflow.steps.findIndex((s: any) =>
           s.id === 'application' || s.name?.toLowerCase().includes('application')
         )
+
         if (currentStepIdx !== -1 && currentStepIdx < workflow.steps.length - 1) {
           nextStepId = workflow.steps[currentStepIdx + 1].id
         } else if (currentStepIdx === -1) {
@@ -60,7 +64,7 @@ export default function ApplicationPage() {
         status: 'DRAFT',
         currentStepId: nextStepId,
       })
-      
+
       setApplication(newApp)
       toast.success('Information saved!')
 
@@ -85,10 +89,11 @@ export default function ApplicationPage() {
 
   return (
     <StudentLayout currentStep="application">
-      <ProfileBuilderStep 
+      <ProfileBuilderStep
         application={application}
         onSubmit={handleSubmit}
         submitting={submitting}
+        pageContent={pageContent}
       />
     </StudentLayout>
   )

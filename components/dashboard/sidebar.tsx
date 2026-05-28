@@ -29,13 +29,31 @@ import { usePathname } from "next/navigation"
 import { signOut, useSession } from "next-auth/react"
 import { permissionService } from "@/lib/services/api.service"
 
-const ALL_MENU_ITEMS = [
+type MenuItem = {
+  icon?: any
+  label: string
+  href?: string
+  feature?: string
+  badge?: string
+  children?: MenuItem[]
+}
+
+const ALL_MENU_ITEMS: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/admin", feature: "dashboard" },
   { icon: Users, label: "Candidates", href: "/admin/candidates", feature: "candidates" },
   { icon: Building2, label: "Hotels", href: "/admin/hotels", feature: "hotels" },
   { icon: Activity, label: "Audit Logs", href: "/admin/activity", feature: "activity", badge: "3" },
   { icon: ShieldCheck, label: "Approvals", href: "/admin/applications", feature: "applications", badge: "New" },
-  { icon: Workflow, label: "Workflows", href: "/admin/workflows", feature: "workflows" },
+  {
+    icon: Workflow,
+    label: "Workflows",
+    href: "/admin/workflows",
+    feature: "workflows",
+    children: [
+      { label: "Applications Step Editor", href: "/admin/steps/applications", feature: "applications" },
+      { label: "Documents Step Editor", href: "/admin/steps/documents", feature: "documents" },
+    ],
+  },
   { icon: Calendar, label: "Interviews", href: "/admin/interviews", feature: "interviews" },
   { icon: FileText, label: "Documents", href: "/admin/documents", feature: "documents" },
   { icon: CreditCard, label: "Payments", href: "/admin/payments", feature: "payments", badge: "New" },
@@ -45,6 +63,23 @@ const ALL_MENU_ITEMS = [
   { icon: Mail, label: "Email Templates", href: "/admin/emails", feature: "emails" },
   { icon: Search, label: "Search", href: "/admin/search", feature: "search" },
 ]
+
+const filterMenuItems = (items: MenuItem[], allowedFeatures: string[], userRole: string): MenuItem[] => {
+  return items.reduce<MenuItem[]>((acc, item) => {
+    const hasAccess = !item.feature || userRole === "SUPER_ADMIN" || allowedFeatures.includes(item.feature)
+    const filteredChildren = item.children ? filterMenuItems(item.children, allowedFeatures, userRole) : []
+    const hasVisibleChildren = filteredChildren.length > 0
+
+    if (hasAccess || hasVisibleChildren) {
+      acc.push({
+        ...item,
+        children: hasVisibleChildren ? filteredChildren : undefined,
+      })
+    }
+
+    return acc
+  }, [])
+}
 
 export function Sidebar() {
   const { data: session } = useSession()
@@ -75,9 +110,7 @@ export function Sidebar() {
     fetchPermissions()
   }, [userRole])
 
-  const filteredMenuItems = ALL_MENU_ITEMS.filter(
-    (item) => userRole === "SUPER_ADMIN" || allowedFeatures.includes(item.feature)
-  )
+  const filteredMenuItems = filterMenuItems(ALL_MENU_ITEMS, allowedFeatures, userRole)
 
   const showSettings = userRole === "SUPER_ADMIN" || allowedFeatures.includes("settings")
 
@@ -111,36 +144,66 @@ export function Sidebar() {
             <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#CCFF00" }} />
           </div>
         ) : (
-          <nav className="space-y-0.5">
+          <nav className="space-y-1">
             {filteredMenuItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
+              const hasChildren = Boolean(item.children?.length)
+              const isActive = item.href
+                ? pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
+                : false
+              const hasActiveChild = item.children?.some((child) => child.href && (pathname === child.href || pathname.startsWith(child.href)))
+              const activeState = isActive || hasActiveChild
+
               return (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-all duration-200",
-                    isActive
-                      ? "text-black"
-                      : "hover:bg-white/5"
+                <div key={item.label} className="space-y-0.5">
+                  <Link
+                    href={item.href || "#"}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-all duration-200",
+                      activeState
+                        ? "text-black"
+                        : "hover:bg-white/5"
+                    )}
+                    style={
+                      activeState
+                        ? { backgroundColor: "#CCFF00", color: "#111" }
+                        : { color: "#777" }
+                    }
+                  >
+                    {item.icon && <item.icon className="w-3.5 h-3.5 shrink-0" />}
+                    <span className="flex-1 truncate">{item.label}</span>
+                    {item.badge && !activeState && (
+                      <span
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                        style={{ backgroundColor: "#CCFF00", color: "#111" }}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                    {hasChildren && <span className="text-[10px] opacity-60">▾</span>}
+                  </Link>
+
+                  {hasChildren && (
+                    <div className="ml-4 space-y-0.5 border-l border-white/10 pl-3">
+                      {item.children?.map((child) => {
+                        const childActive = pathname === child.href || (child.href !== "/admin" && pathname.startsWith(child.href))
+
+                        return (
+                          <Link
+                            key={child.label}
+                            href={child.href || "#"}
+                            className={cn(
+                              "block rounded-md px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] transition-all duration-200",
+                              childActive ? "text-[#CCFF00]" : "hover:bg-white/5"
+                            )}
+                            style={childActive ? { color: "#CCFF00" } : { color: "#777" }}
+                          >
+                            {child.label}
+                          </Link>
+                        )
+                      })}
+                    </div>
                   )}
-                  style={
-                    isActive
-                      ? { backgroundColor: "#CCFF00", color: "#111" }
-                      : { color: "#777" }
-                  }
-                >
-                  <item.icon className="w-3.5 h-3.5 shrink-0" />
-                  <span className="flex-1 truncate">{item.label}</span>
-                  {item.badge && !isActive && (
-                    <span
-                      className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ backgroundColor: "#CCFF00", color: "#111" }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
+                </div>
               )
             })}
           </nav>

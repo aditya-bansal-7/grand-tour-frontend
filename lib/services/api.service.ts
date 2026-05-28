@@ -54,6 +54,17 @@ export const applicationService = {
   },
 };
 
+export const applicationPageContentService = {
+  get: async (pageKey = 'application') => {
+    const response = await apiClient.get(`/api/application-page-content/${pageKey}`);
+    return response.data.data;
+  },
+  update: async (pageKey = 'application', data: any) => {
+    const response = await apiClient.put(`/api/application-page-content/${pageKey}`, data);
+    return response.data.data;
+  },
+};
+
 export const interviewService = {
   getAll: async () => {
     const response = await apiClient.get('/api/interviews');
