@@ -197,29 +197,58 @@ export function DocumentsStepPreview({ pageContent, uploadedDocs = {}, onUpload 
                   </div>
                   <p className="text-sm text-[#666666] mb-6">{block.description || 'Document upload guidance'}</p>
 
-                  <div className="border-2 border-dashed border-gray-200 rounded-2xl py-12 px-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[#C6F16D] hover:bg-[#FAFFF0] transition-all group"
-                    onClick={() => onUpload?.(block.fieldKey, block.label)}
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center group-hover:bg-[#C6F16D]/20 transition-colors">
-                      <Upload className="w-5 h-5 text-gray-400 group-hover:text-[#4D6B19]" />
-                    </div>
-                    <p className="text-sm text-[#1A1A1A] font-medium">
-                      Drop your document here or <span className="text-[#4D6B19] underline font-bold">browse files</span>
-                    </p>
-                    <p className="text-[9px] font-bold tracking-widest uppercase text-gray-400">
-                      {block.placeholder || 'Supported Formats'}
-                    </p>
-                  </div>
+                  {(status === 'NOT UPLOADED' || status === 'REJECTED') ? (
+                    <>
+                      <div className="border-2 border-dashed border-gray-200 rounded-2xl py-12 px-8 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-[#C6F16D] hover:bg-[#FAFFF0] transition-all group"
+                        onClick={() => onUpload?.(block.fieldKey, block.label)}
+                      >
+                        <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center group-hover:bg-[#C6F16D]/20 transition-colors">
+                          <Upload className="w-5 h-5 text-gray-400 group-hover:text-[#4D6B19]" />
+                        </div>
+                        <p className="text-sm text-[#1A1A1A] font-medium">
+                          Drop your document here or <span className="text-[#4D6B19] underline font-bold">browse files</span>
+                        </p>
+                        <p className="text-[9px] font-bold tracking-widest uppercase text-gray-400">
+                          {block.placeholder || 'Supported Formats'}
+                        </p>
+                      </div>
 
-                  <div className="flex justify-end mt-4">
-                    <Button
-                      onClick={() => onUpload?.(block.fieldKey, block.label)}
-                      className="bg-[#F5F5F5] hover:bg-[#E8E8E8] text-[#1A1A1A] font-bold rounded-full px-6 h-10 gap-2"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload {block.label}
-                    </Button>
-                  </div>
+                      <div className="flex justify-end mt-4">
+                        <Button
+                          onClick={() => onUpload?.(block.fieldKey, block.label)}
+                          className="bg-[#F5F5F5] hover:bg-[#E8E8E8] text-[#1A1A1A] font-bold rounded-full px-6 h-10 gap-2"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Upload {block.label}
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="bg-[#FAFFF0] border border-[#C6F16D]/30 rounded-2xl p-6 flex flex-col items-center justify-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-[#C6F16D]/20 flex items-center justify-center">
+                        <CheckCircle2 className="w-6 h-6 text-[#4D6B19]" />
+                      </div>
+                      <div className="text-center">
+                        <p className="font-bold text-[#1A1A1A]">Document Uploaded Successfully</p>
+                        <p className="text-sm text-[#666666] mt-1">
+                          {status === 'APPROVED' ? 'Your document has been verified and approved.' : 'Your document is currently under review.'}
+                        </p>
+                      </div>
+                      <div className="flex justify-end w-full mt-2">
+                        {/* Optional: Allow viewing the document if uploadedDocs has the URL */}
+                        {uploadedDocs[block.fieldKey]?.url && (
+                          <Button
+                            variant="outline"
+                            onClick={() => window.open(uploadedDocs[block.fieldKey].url, '_blank')}
+                            className="rounded-full gap-2 text-sm"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View Document
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </Card>
               )
             }

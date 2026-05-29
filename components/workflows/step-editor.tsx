@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 import { WorkflowStep, WorkflowField, FieldType } from '@/lib/workflow-schema'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import UploadPopup from '@/components/UploadPopup'
 import { 
   Plus, 
   Trash2, 
@@ -41,24 +43,36 @@ interface StepEditorProps {
 }
 
 export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
+  const { data: session } = useSession()
   const [name, setName] = useState(step.name)
   const [description, setDescription] = useState(step.description || '')
   const [fields, setFields] = useState<WorkflowField[]>(step.fields || [])
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
   const [isInterviewStep, setIsInterviewStep] = useState(step.isInterviewStep || false)
+  const [isQrUploadOpen, setIsQrUploadOpen] = useState(false)
   
   // Payment configuration state
   const [isPaymentStep, setIsPaymentStep] = useState(step.isPaymentStep || false)
   const [amount, setAmount] = useState(step.amount || 0)
   const [gstPercentage, setGstPercentage] = useState(step.gstPercentage || 18)
   const [discountPercentage, setDiscountPercentage] = useState(step.discountPercentage || 0)
-  const [paymentConfig, setPaymentConfig] = useState(step.paymentConfig || {
+  const [paymentConfig, setPaymentConfig] = useState<any>(step.paymentConfig || {
     accountName: '',
     accountNumber: '',
     ifsc: '',
     bankName: '',
+    currency: 'INR',
+    merchant: '',
+    reference: '',
     qrCodeUrl: ''
   })
+
+  const handleQrUploadComplete = (doc: any) => {
+    const uploadedUrl = doc.url || doc.data?.url || ''
+    if (uploadedUrl) {
+      setPaymentConfig((prev: any) => ({ ...prev, qrCodeUrl: uploadedUrl }))
+    }
+  }
 
   // Group fields by sections for visual representation
   const sections: { id: string; name: string; fields: WorkflowField[] }[] = []
@@ -292,19 +306,63 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
                   onChange={(e) => setPaymentConfig({...paymentConfig, bankName: e.target.value})} 
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">Currency</label>
+                <Input
+                  value={paymentConfig.currency || 'INR'}
+                  onChange={(e) => setPaymentConfig({...paymentConfig, currency: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">Merchant Name</label>
+                <Input
+                  value={paymentConfig.merchant || ''}
+                  onChange={(e) => setPaymentConfig({...paymentConfig, merchant: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-muted-foreground">Reference / Notes</label>
+                <Input
+                  value={paymentConfig.reference || ''}
+                  onChange={(e) => setPaymentConfig({...paymentConfig, reference: e.target.value})}
+                />
+              </div>
               <div className="md:col-span-2 space-y-2 mt-2">
-                <label className="text-xs font-bold text-muted-foreground flex items-center justify-between">
-                  <span>Custom QR Code Image URL</span>
-                  <span className="text-[10px] text-muted-foreground/60 font-normal">Optional (overrides dynamic QR)</span>
-                </label>
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-xs font-bold text-muted-foreground flex items-center justify-between">
+                    <span>Custom QR Code Image URL</span>
+                    <span className="text-[10px] text-muted-foreground/60 font-normal ml-3">Optional (overrides dynamic QR)</span>
+                  </label>
+                  <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setIsQrUploadOpen(true)}>
+                    <Upload className="w-4 h-4" />
+                    Upload QR Image
+                  </Button>
+                </div>
                 <Input 
                   placeholder="https://example.com/my-qr-code.png"
                   value={paymentConfig.qrCodeUrl || ''} 
                   onChange={(e) => setPaymentConfig({...paymentConfig, qrCodeUrl: e.target.value})} 
                 />
+                {paymentConfig.qrCodeUrl && (
+                  <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 flex items-center gap-3">
+                    <img src={paymentConfig.qrCodeUrl} alt="QR Preview" className="w-16 h-16 rounded-lg border border-emerald-200 bg-white object-contain" />
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-900">QR preview ready</p>
+                      <p className="text-xs text-emerald-700">This image will be shown on the student payment screen.</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
+          <UploadPopup
+            isOpen={isQrUploadOpen}
+            onClose={() => setIsQrUploadOpen(false)}
+            onUploadComplete={handleQrUploadComplete}
+            token={(session as any)?.backendToken || ''}
+            documentType="payment_qr"
+            documentName="Payment QR Image"
+          />
         </Card>
       ) : !isInterviewStep ? (
         <div className="space-y-8">

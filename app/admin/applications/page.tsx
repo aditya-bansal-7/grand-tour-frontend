@@ -13,7 +13,7 @@ export default function ApplicationsPage() {
           title="Applications" 
           description="Manage new internship applications and control the student-facing application page content" 
         />
-        <ApplicationPageContentEditor />
+        {/* <ApplicationPageContentEditor /> */}
         <CandidatesTable initialStatus="pending" />
       </div>
     </DashboardLayout>

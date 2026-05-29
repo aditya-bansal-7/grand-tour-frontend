@@ -22,22 +22,35 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+const WORKFLOW_STEP_ORDER: Record<string, number> = {
+  application: 0,
+  documents: 1,
+  interview: 2,
+  selection: 3,
+  payment1: 4,
+  contract: 5,
+  workpermit: 6,
+  visa: 7,
+  travel: 8,
+  hotel: 9,
+}
+
 const NAV_ITEMS = [
-  // { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Sparkles, label: 'Application', href: '/dashboard/application' },
-  { icon: FileText, label: 'Documents', href: '/dashboard/documents' },
-  { icon: Calendar, label: 'Interview Hub', href: '/dashboard/interview' },
-  { icon: ShieldCheck, label: 'Offers & Selection', href: '/dashboard/selection' },
-  { icon: Banknote, label: 'Financial Center', href: '/dashboard/payment1', badge: 'New' },
-  { icon: ClipboardCheck, label: 'Contract', href: '/dashboard/contract' },
-  { icon: Stamp, label: 'Visa', href: '/dashboard/visa' },
-  { icon: Briefcase, label: 'Work Permit', href: '/dashboard/workpermit' },
-  { icon: Plane, label: 'Travel', href: '/dashboard/travel' },
-  { icon: Building2, label: 'Hotel', href: '/dashboard/hotel' },
+  { icon: Sparkles, label: 'Application', href: '/dashboard/application', stepKey: 'application' },
+  { icon: FileText, label: 'Documents', href: '/dashboard/documents', stepKey: 'documents' },
+  { icon: Calendar, label: 'Interview Hub', href: '/dashboard/interview', stepKey: 'interview' },
+  { icon: ShieldCheck, label: 'Offers & Selection', href: '/dashboard/selection', stepKey: 'selection' },
+  { icon: Banknote, label: 'Financial Center', href: '/dashboard/payment1', stepKey: 'payment1', badge: 'New' },
+  { icon: ClipboardCheck, label: 'Contract', href: '/dashboard/contract', stepKey: 'contract' },
+  { icon: Stamp, label: 'Visa', href: '/dashboard/visa', stepKey: 'visa' },
+  { icon: Briefcase, label: 'Work Permit', href: '/dashboard/workpermit', stepKey: 'workpermit' },
+  { icon: Plane, label: 'Travel', href: '/dashboard/travel', stepKey: 'travel' },
+  { icon: Building2, label: 'Hotel', href: '/dashboard/hotel', stepKey: 'hotel' },
 ]
 
 export function StudentSidebar({ currentStep }: { currentStep?: string }) {
   const pathname = usePathname()
+  const currentStepOrder = WORKFLOW_STEP_ORDER[currentStep || 'application'] ?? 0
 
   return (
     <aside
@@ -69,33 +82,49 @@ export function StudentSidebar({ currentStep }: { currentStep?: string }) {
             const isActive =
               pathname === item.href ||
               (item.href !== '/dashboard' && pathname.startsWith(item.href))
+            const itemStepOrder = WORKFLOW_STEP_ORDER[item.stepKey || 'application'] ?? 0
+            const isLocked = itemStepOrder > currentStepOrder && !isActive
 
             return (
               <Link
                 key={item.label}
-                href={item.href}
+                href={isLocked ? '#' : item.href}
+                onClick={(e) => {
+                  if (isLocked) {
+                    e.preventDefault()
+                  }
+                }}
                 className={cn(
                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-[11px] font-semibold tracking-widest uppercase transition-all duration-200',
                   isActive
                     ? 'text-black'
-                    : 'hover:bg-white/5'
+                    : isLocked
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'hover:bg-white/5'
                 )}
                 style={
                   isActive
                     ? { backgroundColor: '#D0FB3B', color: '#111' }
-                    : { color: '#777' }
+                    : isLocked
+                      ? { color: '#999' }
+                      : { color: '#777' }
                 }
+                aria-disabled={isLocked}
               >
                 <item.icon className="w-3.5 h-3.5 shrink-0" />
                 <span className="flex-1 truncate">{item.label}</span>
-                {item.badge && !isActive && (
+                {isLocked ? (
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-white/70 text-gray-600">
+                    LOCKED
+                  </span>
+                ) : item.badge && !isActive ? (
                   <span
                     className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                     style={{ backgroundColor: '#D0FB3B', color: '#111' }}
                   >
                     {item.badge}
                   </span>
-                )}
+                ) : null}
               </Link>
             )
           })}

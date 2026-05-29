@@ -52,6 +52,7 @@ const ALL_MENU_ITEMS: MenuItem[] = [
     children: [
       { label: "Applications Step Editor", href: "/admin/steps/applications", feature: "applications" },
       { label: "Documents Step Editor", href: "/admin/steps/documents", feature: "documents" },
+      { label: "Payment Step Editor", href: "/admin/steps/payment", feature: "payments" },
     ],
   },
   { icon: Calendar, label: "Interviews", href: "/admin/interviews", feature: "interviews" },

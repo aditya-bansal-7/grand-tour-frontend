@@ -33,6 +33,14 @@ export interface Candidate {
   internshipStartDate?: string
   internshipEndDate?: string
   additionalData?: any
+  
+  // Application specifics
+  passportNumber?: string
+  educationalInstitution?: string
+  enrollmentStatus?: string
+  preferredDepartment?: string
+  statementOfPurpose?: string
+  documents?: any[]
 }
 
 export const dummyCandidates: Candidate[] = [

@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Search, Eye, ArrowRight, MessageSquare, Check, X, Phone, Mail, Loader2 } from 'lucide-react'
+import { Search, Eye, ArrowRight, MessageSquare, Check, X, Phone, Mail, Loader2, Download } from 'lucide-react'
 
 interface CandidatesTableProps {
   initialStatus?: 'all' | CandidateStatus
@@ -84,6 +84,12 @@ export function CandidatesTable({ initialStatus = 'all', title }: CandidatesTabl
           internshipStartDate: app.data?.internshipStartDate, // Note: app.internshipStartDate was dropped
           internshipEndDate: app.data?.internshipEndDate,
           additionalData: app.data,
+          passportNumber: app.passportNumber,
+          educationalInstitution: app.educationalInstitution,
+          enrollmentStatus: app.enrollmentStatus,
+          preferredDepartment: app.preferredDepartment,
+          statementOfPurpose: app.statementOfPurpose,
+          documents: app.documents,
         }
       })
       setCandidates(mappedCandidates)
@@ -219,41 +225,40 @@ export function CandidatesTable({ initialStatus = 'all', title }: CandidatesTabl
                   <p className="text-foreground">{selectedCandidate.phone || 'N/A'}</p>
                 </div>
               </div>
-            </div>            <div className="grid md:grid-cols-2 gap-6">
+            </div>            <div className="grid md:grid-cols-1 gap-6 pt-4 border-t border-border">
               <div className="space-y-4">
-                <h3 className="text-sm font-bold border-b pb-1">Education Info</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-muted-foreground">College:</span>
-                  <span className="text-foreground">{selectedCandidate.collegeName || 'N/A'}</span>
-                  <span className="text-muted-foreground">University:</span>
-                  <span className="text-foreground">{selectedCandidate.universityName || 'N/A'}</span>
-                  <span className="text-muted-foreground">Course:</span>
-                  <span className="text-foreground">{selectedCandidate.course || 'N/A'}</span>
-                  <span className="text-muted-foreground">Current Year:</span>
-                  <span className="text-foreground">{selectedCandidate.currentYear || 'N/A'}</span>
-                  <span className="text-muted-foreground">CGPA:</span>
-                  <span className="text-foreground">{selectedCandidate.cgpa || 'N/A'}</span>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold border-b pb-1">Internship Details</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-muted-foreground">Dept:</span>
-                  <span className="text-foreground">{selectedCandidate.department || 'N/A'}</span>
-                  <span className="text-muted-foreground">Start:</span>
-                  <span className="text-foreground">{selectedCandidate.internshipStartDate || 'N/A'}</span>
-                  <span className="text-muted-foreground">End:</span>
-                  <span className="text-foreground">{selectedCandidate.internshipEndDate || 'N/A'}</span>
-                </div>
-                <h3 className="text-sm font-bold border-b pb-1">Personal Info</h3>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-muted-foreground">DOB:</span>
-                  <span className="text-foreground">{selectedCandidate.dateOfBirth || 'N/A'}</span>
-                  <span className="text-muted-foreground">Whatsapp:</span>
-                  <span className="text-foreground">{selectedCandidate.whatsapp || 'N/A'}</span>
-                </div>
+                <h3 className="text-sm font-bold border-b pb-1">Submitted Documents</h3>
+                {selectedCandidate.documents && selectedCandidate.documents.length > 0 ? (
+                  <div className="flex flex-col gap-2">
+                    {selectedCandidate.documents.map((doc: any, index: number) => (
+                      <a 
+                        key={index} 
+                        href={doc.url} 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center justify-between p-3 bg-secondary/30 border border-border rounded-lg hover:bg-secondary/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-bold text-primary uppercase">{doc.type || 'DOC'}</span>
+                          </div>
+                          <div className="truncate">
+                            <p className="text-sm font-medium text-foreground truncate">{doc.name}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase">{doc.status}</p>
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
+                          <Download className="w-4 h-4" />
+                        </Button>
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No documents submitted.</p>
+                )}
               </div>
             </div>
+
 
             {selectedCandidate.address && (
               <div>
@@ -267,7 +272,7 @@ export function CandidatesTable({ initialStatus = 'all', title }: CandidatesTabl
             {/* Dynamic Workflow Data */}
             {selectedCandidate.additionalData && Object.keys(selectedCandidate.additionalData).length > 0 && (
               <div className="space-y-6 pt-4 border-t border-border">
-                <h3 className="text-lg font-bold text-foreground">Workflow Responses</h3>
+                <h3 className="text-lg font-bold text-foreground">Application Data</h3>
                 {Object.entries(selectedCandidate.additionalData).map(([stageName, sections]: [string, any]) => {
                   // Fallback for flat data
                   if (typeof sections !== 'object' || sections === null) {

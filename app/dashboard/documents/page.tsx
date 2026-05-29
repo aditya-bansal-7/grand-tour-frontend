@@ -70,7 +70,27 @@ export default function DocumentsPage() {
     toast.success(`${activeDocName} uploaded successfully!`)
   }
 
+  const uploadedDocStatuses = Object.values(uploadedDocs)
+  const hasRejectedDocuments = uploadedDocStatuses.some((doc: any) => doc.status === 'REJECTED')
+  const allUploadedDocsApproved = uploadedDocStatuses.length > 0 && uploadedDocStatuses.every((doc: any) => doc.status === 'APPROVED')
+
+  const requiredDocKeys = (pageContent?.blocks || [])
+    .filter((b: any) => b.type === 'upload' && b.enabled !== false)
+    .map((b: any) => b.fieldKey)
+  
+  const fallbackKeys = ['RESUME', 'PASSPORT', 'PHOTO']
+  const keysToCheck = requiredDocKeys.length > 0 ? requiredDocKeys : fallbackKeys
+
+  const allRequiredDocsUploaded = keysToCheck.every((key: string) => 
+    uploadedDocs[key] && uploadedDocs[key].status !== 'REJECTED'
+  )
+
   const handleContinue = async () => {
+    if (!allRequiredDocsUploaded) {
+      toast.error('All required documents must be uploaded before continuing to the next stage.')
+      return
+    }
+
     try {
       setSubmitting(true)
       
@@ -83,13 +103,9 @@ export default function DocumentsPage() {
         }
       }
 
-      await applicationService.create({
-        ...application,
-        status: 'DRAFT',
-        currentStepId: nextStepId,
-      })
+      await applicationService.updateStep(application.id, nextStepId)
 
-      toast.success('Documents saved!')
+      toast.success('Moving to the next stage.')
       router.push(`/dashboard/${nextStepId}`)
     } catch (error: any) {
       toast.error(error.message || 'Failed to save')
@@ -115,6 +131,18 @@ export default function DocumentsPage() {
           onUpload={openUpload}
         />
 
+        <div className="rounded-3xl border border-[#C6F16D]/30 bg-[#FAFFF0] p-5 text-sm text-[#3F6212]">
+          {hasRejectedDocuments ? (
+            <p className="font-semibold">One or more documents were rejected. Please resubmit the rejected files before continuing.</p>
+          ) : !allRequiredDocsUploaded ? (
+            <p className="font-semibold">Upload all required documents to unlock the next stage.</p>
+          ) : allUploadedDocsApproved ? (
+            <p className="font-semibold">All uploaded documents are approved. You can now continue to the next stage.</p>
+          ) : (
+            <p className="font-semibold">All required documents uploaded successfully. You can now continue to the next stage.</p>
+          )}
+        </div>
+
         <div className="flex items-center justify-between pt-8 border-t border-gray-100">
           <Button 
             variant="ghost" 
@@ -134,8 +162,8 @@ export default function DocumentsPage() {
             </Button>
             <Button 
               onClick={handleContinue}
-              disabled={submitting}
-              className="bg-[#C6F16D] hover:bg-[#b5e359] text-[#1A1A1A] font-bold h-12 px-8 rounded-full tracking-wide gap-2"
+              disabled={submitting || !allUploadedDocsApproved}
+              className="bg-[#C6F16D] hover:bg-[#b5e359] text-[#1A1A1A] font-bold h-12 px-8 rounded-full tracking-wide gap-2 disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
               Continue to Step 4

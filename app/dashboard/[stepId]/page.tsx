@@ -51,6 +51,11 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
     fetchData()
   }, [stepId])
 
+  const currentStepIndex = workflow?.steps?.findIndex((s: any) => s.id === application?.currentStepId) ?? -1
+  const targetStepIndex = workflow?.steps?.findIndex((s: any) => s.id === stepId) ?? -1
+  const isStepLocked = currentStepIndex >= 0 && targetStepIndex > currentStepIndex
+  const activeStep = workflow?.steps?.find((s: any) => s.id === application?.currentStepId)
+
 
   const handleSubmit = async (formData: any, overrideApp?: any) => {
     console.log('--- DynamicStepPage handleSubmit ---')
@@ -190,12 +195,31 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
   return (
     <StudentLayout currentStep={application?.currentStepId}>
       <div className="max-w-4xl space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">{currentStepConfig.name}</h1>
-          <p className="text-muted-foreground">{currentStepConfig.description || 'Complete the required actions for this stage'}</p>
-        </div>
+        {isStepLocked ? (
+          <Card className="p-8 border-2 border-dashed border-primary/30 bg-primary/5">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-6 h-6 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold">Stage Locked</h2>
+                <p className="text-muted-foreground">
+                  This stage is locked until your current workflow step is completed. You are currently on <span className="font-semibold text-foreground">{activeStep?.name || 'the active stage'}</span>.
+                </p>
+                <Button onClick={() => router.push(`/dashboard/${application?.currentStepId || 'application'}`)} className="mt-2">
+                  Return to Current Step
+                </Button>
+              </div>
+            </div>
+          </Card>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold">{currentStepConfig.name}</h1>
+              <p className="text-muted-foreground">{currentStepConfig.description || 'Complete the required actions for this stage'}</p>
+            </div>
 
-        {/* Step Status Card */}
+            {/* Step Status Card */}
         <Card className="p-6 border-l-4 border-l-primary bg-primary/5">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -512,6 +536,8 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
               There are no specific fields to fill in for this stage yet. Our team will update you when actions are required.
             </p>
           </Card>
+        )}
+          </>
         )}
       </div>
     </StudentLayout>

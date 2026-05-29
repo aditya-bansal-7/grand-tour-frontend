@@ -96,14 +96,25 @@ export default function UploadPopup({
   };
 
   const handleSubmit = async () => {
-    if (!file || !token) return;
+    if (!file) return;
 
     setStatus("uploading");
     setProgress(0);
 
     try {
+      // Dynamically fetch session in case prop is stale/missing
+      const { getSession } = await import("next-auth/react");
+      const session = await getSession();
+      const authToken = token || (session as any)?.backendToken || (session as any)?.user?.token || (typeof window !== "undefined" ? localStorage.getItem("token") : null);
+
+      if (!authToken) {
+        setStatus("error");
+        setError("Authentication token is missing. Please refresh the page or log in again.");
+        return;
+      }
+
       // 1. Upload to Cloudinary
-      const response = await uploadFile(file, token, (p) => setProgress(p));
+      const response = await uploadFile(file, authToken, (p) => setProgress(p));
       
       let finalData = response.data;
 

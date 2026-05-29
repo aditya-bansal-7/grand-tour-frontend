@@ -69,8 +69,9 @@ export default function Payment1Page() {
     try {
       setSubmittingPayment(true)
       const desc = activeInstallmentIndex === 0 ? '1st' : activeInstallmentIndex === 1 ? '2nd' : '3rd'
+      const amountToSubmit = Number(currentStepConfig?.amount || 0)
       await paymentService.submit({
-        amount: 2450,
+        amount: amountToSubmit,
         applicationId: application?.id,
         utrNumber,
         screenshotUrl,
@@ -94,6 +95,27 @@ export default function Payment1Page() {
     )
   }
 
+  const paymentStageUnlocked = application?.currentStepId === 'payment1'
+
+  if (!paymentStageUnlocked) {
+    return (
+      <StudentLayout currentStep="payment1">
+        <div className="max-w-3xl rounded-3xl border border-dashed border-purple-200 bg-purple-50/40 p-8">
+          <h2 className="text-2xl font-bold">Payment Stage Locked</h2>
+          <p className="mt-2 text-muted-foreground">
+            The finance stage will unlock once your application reaches the payment review. Please complete the current workflow step first.
+          </p>
+          <Button
+            className="mt-5"
+            onClick={() => window.location.href = `/dashboard/${application?.currentStepId || 'application'}`}
+          >
+            Return to Current Step
+          </Button>
+        </div>
+      </StudentLayout>
+    )
+  }
+
   const paymentsList = application?.payments || []
 
   const getInstallmentState = (index: number) => {
@@ -109,27 +131,34 @@ export default function Payment1Page() {
     return { status: 'LOCKED', payment: null }
   }
 
-  const installments = [
-    { label: '1ST INSTALLMENT', amount: '$2,450.00', dueDate: 'OCT 12, 2024', info: getInstallmentState(0) },
-    { label: '2ND INSTALLMENT', amount: '$2,450.00', dueDate: 'NOV 15, 2024', info: getInstallmentState(1) },
-    { label: '3RD INSTALLMENT', amount: '$2,450.00', dueDate: 'DEC 15, 2024', info: getInstallmentState(2) },
-  ]
-
   const currentStepConfig = workflow?.steps?.find((s: any) => s.id === 'payment1')
   const paymentConfig = currentStepConfig?.paymentConfig || {
     bankName: 'Curator International Bank',
     accountName: 'Lumina Academy Global Education',
     accountNumber: '8829 0012 5562 1009',
     ifsc: 'LMNAGLXX',
-    currency: 'USD ($) / EUR (€)',
+    currency: 'INR',
     reference: '#LA-2024-8891',
     merchant: 'Lumina Academy Ltd.',
+    qrCodeUrl: '',
   }
 
-  const recentActivity = [
-    { icon: 'check', label: 'Registration Fee Confirmed', amount: '+$500', date: 'Oct 16, 2024 · 09:42 AM', color: 'green' },
-    { icon: 'doc', label: 'Tax Invoice Generated', amount: '', date: 'Oct 16, 2024 · 10:00 AM', color: 'purple' },
+  const baseAmount = Number(currentStepConfig?.amount || 0)
+  const discountPercentage = Number(currentStepConfig?.discountPercentage || 0)
+  const gstPercentage = Number(currentStepConfig?.gstPercentage || 0)
+  const discountAmount = baseAmount * (discountPercentage / 100)
+  const gstAmount = (baseAmount - discountAmount) * (gstPercentage / 100)
+  const totalPayable = baseAmount - discountAmount + gstAmount
+  const currencySymbol = paymentConfig.currency?.toUpperCase().includes('USD') ? '$' : '₹'
+  const qrCodeUrl = paymentConfig.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`${paymentConfig.accountName || 'Grand Tour'}|${paymentConfig.accountNumber || ''}|${paymentConfig.ifsc || ''}|${totalPayable}`)}`
+
+  const installments = [
+    { label: '1ST INSTALLMENT', amount: `${currencySymbol}${Math.round(totalPayable / 3).toLocaleString()}`, dueDate: 'OCT 12, 2024', info: getInstallmentState(0) },
+    { label: '2ND INSTALLMENT', amount: `${currencySymbol}${Math.round(totalPayable / 3).toLocaleString()}`, dueDate: 'NOV 15, 2024', info: getInstallmentState(1) },
+    { label: '3RD INSTALLMENT', amount: `${currencySymbol}${Math.round(totalPayable / 3).toLocaleString()}`, dueDate: 'DEC 15, 2024', info: getInstallmentState(2) },
   ]
+
+  const paymentHistory = [...paymentsList].sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -169,53 +198,14 @@ export default function Payment1Page() {
           {/* QR Code Box */}
           <div className="bg-[#0F172A] rounded-2xl p-5 flex items-center justify-center mb-5 aspect-[4/3]">
             <div className="w-full h-full flex flex-col items-center justify-center gap-2">
-              {/* Simple QR mock */}
-              <div className="bg-white p-3 rounded-xl">
-                <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {/* QR pattern SVG — simplified visual */}
-                  <rect width="96" height="96" fill="white"/>
-                  {/* Top-left finder */}
-                  <rect x="4" y="4" width="28" height="28" rx="3" fill="#1A1A1A"/>
-                  <rect x="8" y="8" width="20" height="20" rx="2" fill="white"/>
-                  <rect x="12" y="12" width="12" height="12" rx="1" fill="#1A1A1A"/>
-                  {/* Top-right finder */}
-                  <rect x="64" y="4" width="28" height="28" rx="3" fill="#1A1A1A"/>
-                  <rect x="68" y="8" width="20" height="20" rx="2" fill="white"/>
-                  <rect x="72" y="12" width="12" height="12" rx="1" fill="#1A1A1A"/>
-                  {/* Bottom-left finder */}
-                  <rect x="4" y="64" width="28" height="28" rx="3" fill="#1A1A1A"/>
-                  <rect x="8" y="68" width="20" height="20" rx="2" fill="white"/>
-                  <rect x="12" y="72" width="12" height="12" rx="1" fill="#1A1A1A"/>
-                  {/* Data dots */}
-                  <rect x="38" y="4" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="46" y="4" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="38" y="12" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="54" y="12" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="4" y="38" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="12" y="38" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="20" y="46" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="38" y="38" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="46" y="46" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="54" y="38" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="62" y="46" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="70" y="38" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="78" y="46" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="86" y="38" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="38" y="54" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="54" y="62" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="62" y="54" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="78" y="62" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="86" y="54" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="46" y="70" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="62" y="78" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="78" y="78" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  <rect x="86" y="86" width="6" height="6" rx="1" fill="#1A1A1A"/>
-                  {/* Payment label in QR */}
-                  <rect x="35" y="43" width="26" height="10" rx="2" fill="#BEF264"/>
-                  <text x="48" y="51" textAnchor="middle" fontSize="5" fill="#3F6212" fontWeight="bold">PAY</text>
-                </svg>
+              <div className="bg-white p-3 rounded-xl w-full max-w-[220px] h-full flex items-center justify-center">
+                <img
+                  src={qrCodeUrl}
+                  alt="Payment QR Code"
+                  className="w-full h-full object-contain rounded-lg"
+                />
               </div>
-              <p className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase">Payment Payment</p>
+              <p className="text-[10px] text-gray-400 font-semibold tracking-widest uppercase">Payment QR</p>
             </div>
           </div>
 
@@ -489,27 +479,31 @@ export default function Payment1Page() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-[#BEF264]/30 rounded-full flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 text-[#3F6212]" />
+            {paymentHistory.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-4 text-sm text-gray-500">
+                No payment submissions yet. Once you upload a receipt, the payment review trail will appear here.
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">Registration Fee Confirmed</p>
-                <p className="text-[10px] text-gray-400 font-semibold">Oct 16, 2024 · 09:42 AM</p>
-              </div>
-              <span className="text-sm font-extrabold text-gray-900">$500</span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
-                <ArrowDownToLine className="w-4 h-4 text-purple-500" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">Tax Invoice Generated</p>
-                <p className="text-[10px] text-gray-400 font-semibold">Oct 16, 2024 · 10:00 AM</p>
-              </div>
-              <ArrowDownToLine className="w-4 h-4 text-gray-400 hover:text-gray-600 cursor-pointer" />
-            </div>
+            ) : (
+              paymentHistory.slice(0, 4).map((payment: any) => (
+                <div key={payment.id} className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${payment.status === 'COMPLETED' ? 'bg-[#BEF264]/30' : 'bg-purple-100'}`}>
+                    {payment.status === 'COMPLETED' ? (
+                      <Check className="w-4 h-4 text-[#3F6212]" />
+                    ) : (
+                      <ArrowDownToLine className="w-4 h-4 text-purple-500" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-gray-900 leading-none mb-0.5">{payment.description || 'Payment Submitted'}</p>
+                    <p className="text-[10px] text-gray-400 font-semibold">{new Date(payment.createdAt).toLocaleString()}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-extrabold text-gray-900">₹{Number(payment.amount || 0).toLocaleString()}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-purple-500">{payment.status}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <button
@@ -590,7 +584,7 @@ export default function Payment1Page() {
             <div className="p-5 bg-[#0F172A] text-white rounded-2xl space-y-4">
               <div>
                 <p className="text-[9px] font-bold text-gray-400 tracking-widest uppercase mb-1">TOTAL AMOUNT DUE</p>
-                <p className="text-2xl font-extrabold text-[#BEF264]">$2,450.00</p>
+                <p className="text-2xl font-extrabold text-[#BEF264]">{currencySymbol}{Math.round(totalPayable).toLocaleString()}</p>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-3 border-t border-white/10 text-xs">
                 <div>

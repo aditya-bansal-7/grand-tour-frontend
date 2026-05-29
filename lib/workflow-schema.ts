@@ -53,7 +53,15 @@ export interface WorkflowStep {
     accountNumber: string
     ifsc: string
     bankName: string
+    currency?: string
+    merchant?: string
+    reference?: string
     qrCodeUrl?: string
+    installments?: Array<{
+      label: string
+      amount: number
+      dueDate?: string
+    }>
   }
 }
 
