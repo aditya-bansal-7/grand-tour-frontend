@@ -99,7 +99,8 @@ export function Sidebar() {
         if (myPermission) {
           setAllowedFeatures(myPermission.features)
         } else if (userRole === "SUPER_ADMIN") {
-          setAllowedFeatures(ALL_MENU_ITEMS.map((i) => i.feature).concat(["settings"]))
+          const fallbackFeatures = ALL_MENU_ITEMS.flatMap((item) => (item.feature ? [item.feature] : []))
+          setAllowedFeatures([...fallbackFeatures, "settings"])
         }
       } catch (error) {
         console.error("Failed to fetch permissions", error)
@@ -150,7 +151,10 @@ export function Sidebar() {
               const isActive = item.href
                 ? pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href))
                 : false
-              const hasActiveChild = item.children?.some((child) => child.href && (pathname === child.href || pathname.startsWith(child.href)))
+              const hasActiveChild = item.children?.some((child) => {
+                const childHref = child.href || ''
+                return childHref ? pathname === childHref || pathname.startsWith(childHref) : false
+              })
               const activeState = isActive || hasActiveChild
 
               return (
@@ -185,7 +189,8 @@ export function Sidebar() {
                   {hasChildren && (
                     <div className="ml-4 space-y-0.5 border-l border-white/10 pl-3">
                       {item.children?.map((child) => {
-                        const childActive = pathname === child.href || (child.href !== "/admin" && pathname.startsWith(child.href))
+                        const childHref = child.href || ''
+                        const childActive = pathname === childHref || (childHref !== "/admin" && pathname.startsWith(childHref))
 
                         return (
                           <Link

@@ -297,6 +297,9 @@ export function DynamicPageContentEditor({
                             <option value="date">date</option>
                             <option value="checkbox">checkbox</option>
                             <option value="user">user</option>
+                            <option value="upload">upload</option>
+                            <option value="summary">summary</option>
+                            <option value="summary-item">summary-item</option>
                           </select>
                         </div>
                       </div>
