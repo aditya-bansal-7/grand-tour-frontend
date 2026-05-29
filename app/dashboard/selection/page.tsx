@@ -130,7 +130,20 @@ export default function SelectionPage() {
         </div>
 
         {/* Main Grid Content */}
-        <div className="grid lg:grid-cols-5 gap-8">
+        {!application?.hotelAssignment ? (
+          <Card className="p-16 border-dashed border-2 border-gray-200 bg-gray-50/50 flex flex-col items-center justify-center text-center space-y-6 rounded-[2rem] shadow-none mt-12">
+            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm">
+              <Clock className="w-10 h-10 text-gray-400" />
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">Waiting for Offer Assignment</h3>
+              <p className="text-gray-500 font-medium max-w-md mx-auto text-base">
+                An admin is currently preparing your offer package. Once your hotel and placement details are assigned, they will appear here.
+              </p>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid lg:grid-cols-5 gap-8">
           
           {/* Left Column (3/5 width) — Internship & Document Details */}
           <div className="lg:col-span-3 space-y-6">
@@ -148,19 +161,25 @@ export default function SelectionPage() {
                     <ShieldCheck className="w-6 h-6" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Principal Design Intern</h2>
-                    <p className="text-sm text-gray-400 font-medium">Lumina Global Creative Studio • Full-time</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{application?.hotelAssignment ? 'Hospitality Intern' : 'Principal Design Intern'}</h2>
+                    <p className="text-sm text-gray-400 font-medium">{application?.hotelAssignment?.hotel?.name || 'Lumina Global Creative Studio'} • Full-time</p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-4 py-6 border-y border-gray-100">
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">START DATE</p>
-                    <p className="text-base font-extrabold text-gray-900 mt-1">Sept 15, 2024</p>
+                    <p className="text-base font-extrabold text-gray-900 mt-1">
+                      {application?.hotelAssignment?.checkIn ? new Date(application.hotelAssignment.checkIn).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Sept 15, 2024'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">DURATION</p>
-                    <p className="text-base font-extrabold text-gray-900 mt-1">6 Months</p>
+                    <p className="text-base font-extrabold text-gray-900 mt-1">
+                      {application?.hotelAssignment?.checkIn && application?.hotelAssignment?.checkOut ? 
+                        `${Math.max(1, Math.round((new Date(application.hotelAssignment.checkOut).getTime() - new Date(application.hotelAssignment.checkIn).getTime()) / (1000 * 60 * 60 * 24 * 30)))} Months` 
+                        : '6 Months'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">STIPEND</p>
@@ -170,7 +189,7 @@ export default function SelectionPage() {
 
                 <div className="space-y-4">
                   <p className="text-gray-600 leading-relaxed font-medium">
-                    We are pleased to offer you the position of Principal Design Intern. This role will involve working directly with the Senior Creative Leads on global campaigns. You've demonstrated exceptional technical skills and an editorial eye that aligns perfectly with our vision.
+                    We are pleased to offer you the position of {application?.hotelAssignment ? 'Hospitality Intern' : 'Principal Design Intern'}. This role will involve working directly with the {application?.hotelAssignment ? 'hotel management at ' + (application.hotelAssignment.hotel?.name || '') : 'Senior Creative Leads on global campaigns'}. You've demonstrated exceptional technical skills and an editorial eye that aligns perfectly with our vision.
                   </p>
                   
                   <ul className="space-y-3 pl-1">
@@ -204,7 +223,7 @@ export default function SelectionPage() {
                   </div>
                 </div>
 
-                <a href="#" onClick={(e) => { e.preventDefault(); toast.success('Contract download started') }} className="shrink-0">
+                <a href={application?.hotelAssignment?.hotel?.proposalPdf || "#"} target={application?.hotelAssignment?.hotel?.proposalPdf ? "_blank" : undefined} onClick={(e) => { if(!application?.hotelAssignment?.hotel?.proposalPdf) { e.preventDefault(); toast.success('Contract download started') } }} className="shrink-0">
                   <Button className="bg-[#1A1A1A] hover:bg-[#333] text-white rounded-xl h-11 px-5 gap-2 font-bold text-xs uppercase tracking-wider">
                     <Download className="w-4 h-4" />
                     Download Contract
@@ -347,7 +366,7 @@ export default function SelectionPage() {
             </Card>
             
           </div>
-        </div>
+        )}
       </div>
     </StudentLayout>
   )

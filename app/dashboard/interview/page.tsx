@@ -1,53 +1,167 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { StudentLayout } from '@/components/student/student-layout'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { applicationService, interviewService } from '@/lib/services/api.service'
-import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { 
-  Loader2, ChevronLeft, ChevronRight, Video, 
+import {
+  Loader2, ChevronLeft, ChevronRight, Video,
   Calendar as CalendarIcon, FileText, Code2, Lightbulb, User
 } from 'lucide-react'
-import { format, isSameDay, addDays, subDays } from 'date-fns'
+import {
+  format,
+  isSameDay,
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  isToday,
+} from 'date-fns'
 
 export default function InterviewPage() {
   const router = useRouter()
-  const { data: session } = useSession()
   const [application, setApplication] = useState<any>(null)
+  const [bookedInterview, setBookedInterview] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [slots, setSlots] = useState<any[]>([])
-  
-  // Hardcoded for demo/UI matching to the image
-  const [currentMonth, setCurrentMonth] = useState(new Date('2023-10-01'))
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date('2023-10-05'))
-  const [selectedSlotId, setSelectedSlotId] = useState<string | null>('dummy-slot-2')
+  const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
+  const [bookingInProgress, setBookingInProgress] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        const [appData, slotData] = await Promise.all([
-          applicationService.getMy(),
-          interviewService.getAvailableSlots().catch(() => [])
+        const [appData, slotData, interviewData] = await Promise.all([
+          applicationService.getMy().catch(() => null),
+          interviewService.getAvailableSlots().catch(() => []),
+          interviewService.getMy().catch(() => null),
         ])
+
         setApplication(appData)
-        setSlots(slotData || [])
+        setBookedInterview(interviewData)
+
+        const availableSlots = Array.isArray(slotData) ? slotData : []
+        setSlots(availableSlots)
+
+        if (interviewData?.scheduledAt) {
+          const scheduledDate = new Date(interviewData.scheduledAt)
+          setCurrentMonth(startOfMonth(scheduledDate))
+          setSelectedDate(scheduledDate)
+        } else if (availableSlots.length > 0) {
+          const firstSlot = availableSlots[0]
+          const firstSlotDate = new Date(firstSlot.startTime)
+          setCurrentMonth(startOfMonth(firstSlotDate))
+          setSelectedDate(firstSlotDate)
+          setSelectedSlotId(firstSlot.id)
+        } else {
+          setCurrentMonth(startOfMonth(new Date()))
+          setSelectedDate(new Date())
+        }
       } catch (error: any) {
         toast.error('Failed to load interview data')
       } finally {
         setLoading(false)
       }
     }
+
     fetchData()
   }, [])
 
+  useEffect(() => {
+    if (!selectedDate || slots.length === 0) return
+
+    const availableForDate = slots.filter((slot) => isSameDay(new Date(slot.startTime), selectedDate))
+
+    if (availableForDate.length > 0) {
+      const currentSelection = availableForDate.find((slot) => slot.id === selectedSlotId)
+      if (!currentSelection) {
+        setSelectedSlotId(availableForDate[0].id)
+      }
+    } else {
+      setSelectedSlotId(null)
+    }
+  }, [selectedDate, slots])
+
+  const selectedSlot = useMemo(() => {
+    if (!selectedSlotId) return null
+    return slots.find((slot) => slot.id === selectedSlotId) || null
+  }, [selectedSlotId, slots])
+
+  const slotsForSelectedDate = useMemo(() => {
+    if (!selectedDate) return []
+    return slots.filter((slot) => isSameDay(new Date(slot.startTime), selectedDate))
+  }, [selectedDate, slots])
+
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth)
+    const monthEnd = endOfMonth(currentMonth)
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn: 1 })
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn: 1 })
+
+    return eachDayOfInterval({ start: calendarStart, end: calendarEnd })
+  }, [currentMonth])
+
+  const slotCountByDate = useMemo(() => {
+    const counts = new Map<string, number>()
+
+    slots.forEach((slot) => {
+      const dayKey = format(new Date(slot.startTime), 'yyyy-MM-dd')
+      counts.set(dayKey, (counts.get(dayKey) || 0) + 1)
+    })
+
+    return counts
+  }, [slots])
+
+  const upcomingInterview = bookedInterview || selectedSlot
+  const upcomingDate = upcomingInterview?.scheduledAt ? new Date(upcomingInterview.scheduledAt) : selectedSlot ? new Date(selectedSlot.startTime) : null
+  const interviewerName = bookedInterview?.interviewer
+    ? `${bookedInterview.interviewer.firstName || ''} ${bookedInterview.interviewer.lastName || ''}`.trim()
+    : 'Awaiting assignment'
+  const meetingLink = bookedInterview?.locationUrl || selectedSlot?.meetLink || 'Link will be shared after booking'
+
   const handleBook = async () => {
-    toast.success('Interview scheduled successfully!')
-    router.push('/dashboard/selection')
+    if (!selectedSlotId || !application?.id) {
+      toast.error('Select an available slot first')
+      return
+    }
+
+    try {
+      setBookingInProgress(true)
+      await interviewService.bookSlot(selectedSlotId, application.id)
+      const updatedInterview = await interviewService.getMy()
+      setBookedInterview(updatedInterview)
+      setSlots((currentSlots) =>
+        currentSlots.map((slot) =>
+          slot.id === selectedSlotId ? { ...slot, isBooked: true, applicationId: application.id } : slot
+        )
+      )
+      toast.success('Interview scheduled successfully!')
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to schedule interview')
+    } finally {
+      setBookingInProgress(false)
+    }
+  }
+
+  const handleJoinMeeting = () => {
+    if (bookedInterview?.locationUrl) {
+      window.open(bookedInterview.locationUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (selectedSlot?.meetLink) {
+      window.open(selectedSlot.meetLink, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    toast.info('Meeting link will appear here once your interview is booked')
   }
 
   const interviewHeader = (
@@ -68,104 +182,110 @@ export default function InterviewPage() {
   return (
     <StudentLayout currentStep="interview" headerContent={interviewHeader}>
       <div className="w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
-        
         <div className="grid lg:grid-cols-12 gap-8">
-          
-          {/* Left Column */}
           <div className="lg:col-span-7 space-y-8">
-            
-            {/* Calendar Widget Card */}
             <Card className="p-8 border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] bg-white">
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-xl font-bold text-[#1A1A1A]">Schedule Your Slot</h3>
-                  <p className="text-sm text-[#666666] mt-1">Select an available time for your Technical Assessment.</p>
+                  <p className="text-sm text-[#666666] mt-1">Available interview times are synced directly from the backend.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button className="w-8 h-8 flex items-center justify-center text-[#1A1A1A] hover:bg-gray-100 rounded-full transition-colors">
+                  <button
+                    className="w-8 h-8 flex items-center justify-center text-[#1A1A1A] hover:bg-gray-100 rounded-full transition-colors"
+                    onClick={() => setCurrentMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+                  >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <div className="bg-[#F5F5F5] px-4 py-2 rounded-xl text-sm font-bold text-[#1A1A1A]">
-                    October 2023
+                    {format(currentMonth, 'MMMM yyyy')}
                   </div>
-                  <button className="w-8 h-8 flex items-center justify-center text-[#1A1A1A] hover:bg-gray-100 rounded-full transition-colors">
+                  <button
+                    className="w-8 h-8 flex items-center justify-center text-[#1A1A1A] hover:bg-gray-100 rounded-full transition-colors"
+                    onClick={() => setCurrentMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+                  >
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              {/* Mock Calendar Grid */}
               <div className="space-y-6">
                 <div className="grid grid-cols-7 text-center">
-                  {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(day => (
+                  {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) => (
                     <div key={day} className="text-[10px] font-bold tracking-widest uppercase text-gray-400">
                       {day}
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-7 gap-y-6 text-center text-sm font-bold text-[#1A1A1A]">
-                  <div className="text-gray-300">25</div>
-                  <div className="text-gray-300">26</div>
-                  <div className="text-gray-300">27</div>
-                  <div className="text-gray-300">28</div>
-                  <div className="text-gray-300">29</div>
-                  <div className="text-gray-300">30</div>
-                  <div>1</div>
-                  
-                  <div>2</div>
-                  <div className="relative">
-                    3
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#C6F16D]" />
-                  </div>
-                  <div>4</div>
-                  <div className="bg-[#C6F16D] text-[#1A1A1A] w-12 h-12 rounded-xl flex flex-col items-center justify-center mx-auto -mt-3 shadow-lg shadow-[#C6F16D]/30">
-                    <span>5</span>
-                    <span className="text-[8px] tracking-widest uppercase mt-0.5">TODAY</span>
-                  </div>
-                  <div className="relative">
-                    6
-                    <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#E9D5FF]" />
-                  </div>
-                  <div>7</div>
-                  <div>8</div>
 
-                  <div>9</div>
-                  <div>10</div>
-                  <div>11</div>
-                  <div>12</div>
-                  <div>13</div>
-                  <div>14</div>
-                  <div>15</div>
+                <div className="grid grid-cols-7 gap-y-6 text-center text-sm font-bold text-[#1A1A1A]">
+                  {calendarDays.map((day) => {
+                    const dayKey = format(day, 'yyyy-MM-dd')
+                    const availableCount = slotCountByDate.get(dayKey) || 0
+                    const isSelected = selectedDate ? isSameDay(day, selectedDate) : false
+                    const hasAvailableSlots = availableCount > 0
+
+                    return (
+                      <button
+                        key={dayKey}
+                        type="button"
+                        onClick={() => setSelectedDate(day)}
+                        className={`relative mx-auto flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold transition-all ${
+                          isSelected
+                            ? 'bg-[#C6F16D] text-[#1A1A1A] shadow-lg shadow-[#C6F16D]/30'
+                            : isSameMonth(day, currentMonth)
+                              ? 'text-[#1A1A1A] hover:bg-[#F5F5F5]'
+                              : 'text-gray-300'
+                        }`}
+                      >
+                        <span>{format(day, 'd')}</span>
+                        {hasAvailableSlots && (
+                          <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 h-1.5 w-1.5 rounded-full bg-[#C6F16D]" />
+                        )}
+                        {isToday(day) && !isSelected && <span className="absolute -top-1 right-1 h-2 w-2 rounded-full bg-[#8B5CF6]" />}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
               <div className="mt-10 pt-8 border-t border-gray-100">
-                <p className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-4">AVAILABLE TIMES FOR OCT 12</p>
-                <div className="flex flex-wrap gap-4">
-                  <button className="px-6 py-2.5 rounded-full border border-gray-200 text-sm font-bold text-[#1A1A1A] hover:border-[#C6F16D] transition-colors">
-                    09:00 AM
-                  </button>
-                  <button className="px-6 py-2.5 rounded-full border border-gray-200 text-sm font-bold text-[#1A1A1A] hover:border-[#C6F16D] transition-colors">
-                    11:30 AM
-                  </button>
-                  <button className="px-6 py-2.5 rounded-full bg-[#C6F16D] border-[#C6F16D] text-sm font-bold text-[#1A1A1A] shadow-md shadow-[#C6F16D]/20">
-                    02:00 PM
-                  </button>
-                  <button className="px-6 py-2.5 rounded-full border border-gray-200 text-sm font-bold text-[#1A1A1A] hover:border-[#C6F16D] transition-colors">
-                    04:30 PM
-                  </button>
-                </div>
+                <p className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-4">
+                  AVAILABLE TIMES FOR {selectedDate ? format(selectedDate, 'MMM d') : 'SELECTED DATE'}
+                </p>
+
+                {slotsForSelectedDate.length > 0 ? (
+                  <div className="flex flex-wrap gap-4">
+                    {slotsForSelectedDate.map((slot) => (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        onClick={() => setSelectedSlotId(slot.id)}
+                        className={`px-6 py-2.5 rounded-full border text-sm font-bold transition-colors ${
+                          selectedSlotId === slot.id
+                            ? 'bg-[#C6F16D] border-[#C6F16D] text-[#1A1A1A] shadow-md shadow-[#C6F16D]/20'
+                            : 'border-gray-200 text-[#1A1A1A] hover:border-[#C6F16D]'
+                        }`}
+                      >
+                        {format(new Date(slot.startTime), 'h:mm a')}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500">
+                    No interview slots are available for this date.
+                  </div>
+                )}
               </div>
             </Card>
 
-            {/* Booking History */}
             <div className="space-y-4">
               <h3 className="text-xl font-bold text-[#1A1A1A] flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-[#8B5CF6]" />
                 Booking History
               </h3>
-              
-              <div className="space-y-3">
+
+              {bookedInterview ? (
                 <div className="flex items-center justify-between p-5 bg-[#F9F9F9] rounded-2xl">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
@@ -174,51 +294,38 @@ export default function InterviewPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[#1A1A1A]">Initial Screening</p>
-                      <p className="text-[11px] text-[#666666] font-medium mt-0.5">Completed • Sept 28, 2023</p>
+                      <p className="text-sm font-bold text-[#1A1A1A]">Interview Booked</p>
+                      <p className="text-[11px] text-[#666666] font-medium mt-0.5">
+                        {bookedInterview.status || 'PENDING'} • {format(new Date(bookedInterview.scheduledAt), 'MMM d, yyyy h:mm a')}
+                      </p>
                     </div>
                   </div>
                   <span className="bg-white px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase text-gray-500 shadow-sm border border-gray-100">
-                    FEEDBACK SENT
+                    {bookedInterview.status || 'SCHEDULED'}
                   </span>
                 </div>
-
-                <div className="flex items-center justify-between p-5 bg-[#F9F9F9] rounded-2xl">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-                      <div className="w-4 h-4 rounded-full border-2 border-[#8B5CF6] flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 bg-[#8B5CF6] rounded-full" />
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#1A1A1A]">Portfolio Review</p>
-                      <p className="text-[11px] text-[#666666] font-medium mt-0.5">Completed • Oct 02, 2023</p>
-                    </div>
-                  </div>
-                  <span className="bg-white px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase text-gray-500 shadow-sm border border-gray-100">
-                    PASSED
-                  </span>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm text-gray-500">
+                  No interview has been scheduled yet. Select an available slot to reserve your interview.
                 </div>
-              </div>
+              )}
             </div>
-
           </div>
 
-          {/* Right Column */}
           <div className="lg:col-span-5 space-y-6">
-            
-            {/* Upcoming Interview Card */}
             <Card className="p-8 border-none shadow-[0_8px_30px_rgb(0,0,0,0.08)] rounded-[2rem] bg-[#1A1A1A] text-white">
               <div className="flex items-center justify-between mb-8">
                 <span className="bg-[#C6F16D] text-[#1A1A1A] px-3 py-1 rounded-full text-[9px] font-bold tracking-widest uppercase">
-                  UPCOMING
+                  {bookedInterview ? 'BOOKED' : 'UPCOMING'}
                 </span>
                 <Video className="w-5 h-5 text-[#C6F16D]" />
               </div>
 
-              <h2 className="text-2xl font-bold mb-3 text-white">Technical Deep Dive</h2>
+              <h2 className="text-2xl font-bold mb-3 text-white">{bookedInterview ? 'Booked Interview' : 'Interview Session'}</h2>
               <p className="text-sm text-gray-400 leading-relaxed mb-8">
-                This session covers system design, algorithm proficiency, and real-time coding challenges.
+                {bookedInterview
+                  ? 'Your interview is onboarded. Review the booking details below and join the session when ready.'
+                  : 'Choose an available slot and reserve it to move your application into the interview stage.'}
               </p>
 
               <div className="space-y-6 mb-8">
@@ -226,7 +333,9 @@ export default function InterviewPage() {
                   <CalendarIcon className="w-5 h-5 text-[#C6F16D] shrink-0" />
                   <div>
                     <p className="text-[10px] font-bold tracking-widest uppercase text-gray-500">DATE & TIME</p>
-                    <p className="text-sm font-bold text-white mt-0.5">Oct 12, 2:00 PM EST</p>
+                    <p className="text-sm font-bold text-white mt-0.5">
+                      {upcomingDate ? format(upcomingDate, 'MMM d, h:mm a') : 'Select a slot'}
+                    </p>
                   </div>
                 </div>
 
@@ -234,7 +343,7 @@ export default function InterviewPage() {
                   <User className="w-5 h-5 text-[#C6F16D] shrink-0" />
                   <div>
                     <p className="text-[10px] font-bold tracking-widest uppercase text-gray-500">INTERVIEWER</p>
-                    <p className="text-sm font-bold text-white mt-0.5">Sarah Jenkins, Senior Eng.</p>
+                    <p className="text-sm font-bold text-white mt-0.5">{interviewerName}</p>
                   </div>
                 </div>
               </div>
@@ -243,26 +352,27 @@ export default function InterviewPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-[9px] font-bold tracking-widest uppercase text-[#C6F16D] mb-1">MEETING ACCESS</p>
-                    <p className="text-xs font-mono text-gray-300">meet.google.com/abc-defg-hij</p>
+                    <p className="text-xs font-mono text-gray-300 break-all">{typeof meetingLink === 'string' ? meetingLink : 'Link will be shared after booking'}</p>
                   </div>
-                  <button className="text-gray-400 hover:text-white transition-colors" onClick={() => toast.success('Link copied!')}>
+                  <button className="text-gray-400 hover:text-white transition-colors" onClick={() => navigator.clipboard.writeText(String(meetingLink))}>
                     <Code2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
 
-              <Button 
-                onClick={handleBook}
+              <Button
+                onClick={bookedInterview ? handleJoinMeeting : handleBook}
+                disabled={(bookedInterview ? false : !selectedSlotId || bookingInProgress)}
                 className="w-full bg-[#C6F16D] hover:bg-[#b5e359] text-[#1A1A1A] font-bold h-12 rounded-xl"
               >
-                Join Meeting
+                {bookingInProgress ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : null}
+                {bookedInterview ? 'Join Meeting' : bookingInProgress ? 'Booking...' : 'Book Selected Slot'}
               </Button>
             </Card>
 
-            {/* Prep Resources */}
             <Card className="p-8 border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[2rem] bg-[#EADDFF]">
               <h3 className="text-xl font-bold text-[#4F378B] mb-6">Prep Resources</h3>
-              
+
               <div className="space-y-6 mb-8">
                 <div className="flex gap-4">
                   <FileText className="w-5 h-5 text-[#4F378B] shrink-0 mt-0.5" />
@@ -286,7 +396,6 @@ export default function InterviewPage() {
               </Button>
             </Card>
 
-            {/* Mentor Tip */}
             <div className="bg-[#F9F9F9] rounded-2xl p-6 border-l-4 border-[#8B5CF6]">
               <div className="flex gap-4">
                 <Lightbulb className="w-6 h-6 text-[#8B5CF6] shrink-0" />
@@ -298,10 +407,8 @@ export default function InterviewPage() {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
-
       </div>
     </StudentLayout>
   )
