@@ -130,20 +130,7 @@ export default function SelectionPage() {
         </div>
 
         {/* Main Grid Content */}
-        {!application?.hotelAssignment ? (
-          <Card className="p-16 border-dashed border-2 border-gray-200 bg-gray-50/50 flex flex-col items-center justify-center text-center space-y-6 rounded-[2rem] shadow-none mt-12">
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-sm">
-              <Clock className="w-10 h-10 text-gray-400" />
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">Waiting for Offer Assignment</h3>
-              <p className="text-gray-500 font-medium max-w-md mx-auto text-base">
-                An admin is currently preparing your offer package. Once your hotel and placement details are assigned, they will appear here.
-              </p>
-            </div>
-          </Card>
-        ) : (
-          <div className="grid lg:grid-cols-5 gap-8">
+        <div className="grid lg:grid-cols-5 gap-8">
           
           {/* Left Column (3/5 width) — Internship & Document Details */}
           <div className="lg:col-span-3 space-y-6">
@@ -366,7 +353,7 @@ export default function SelectionPage() {
             </Card>
             
           </div>
-        )}
+        </div>
       </div>
     </StudentLayout>
   )

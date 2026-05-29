@@ -85,7 +85,7 @@ export function StudentLayout({ children, currentStep = 'application', headerCon
                 Journey
               </Link>
               <Link
-                href="/dashboard/payment1"
+                href="/dashboard/payment"
                 className="text-xs font-bold tracking-widest uppercase transition-colors duration-200 pb-0.5"
                 style={{
                   color: isFinance ? '#CCFF00' : '#999',
