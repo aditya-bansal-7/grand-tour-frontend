@@ -56,7 +56,9 @@ export function PaymentStepEditor() {
   }, [])
 
   const paymentConfig = paymentStep?.paymentConfig || defaultPaymentConfig
-  const installmentRows = Array.isArray(paymentConfig.installments) ? paymentConfig.installments : []
+  const installmentRows: Array<{ label: string; amount: number | string; dueDate: string }> = Array.isArray(paymentConfig.installments)
+    ? paymentConfig.installments as Array<{ label: string; amount: number | string; dueDate: string }>
+    : []
 
   const totalPayable = (() => {
     const baseAmount = Number(paymentStep?.amount || 0)
@@ -65,7 +67,7 @@ export function PaymentStepEditor() {
     const calculatedTotal = baseAmount - discountAmount + gstAmount
 
     if (installmentRows.length > 0) {
-      return installmentRows.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+      return installmentRows.reduce((sum: number, item) => sum + Number(item.amount || 0), 0)
     }
 
     return calculatedTotal
