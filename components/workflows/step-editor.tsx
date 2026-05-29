@@ -50,6 +50,7 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
   const [editingFieldId, setEditingFieldId] = useState<string | null>(null)
   const [isInterviewStep, setIsInterviewStep] = useState(step.isInterviewStep || false)
   const [isQrUploadOpen, setIsQrUploadOpen] = useState(false)
+  const [isTemplateUploadOpen, setIsTemplateUploadOpen] = useState(false)
   
   // Payment configuration state
   const [isPaymentStep, setIsPaymentStep] = useState(step.isPaymentStep || false)
@@ -65,6 +66,13 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
     merchant: '',
     reference: '',
     qrCodeUrl: ''
+  })
+
+  // Contract configuration state
+  const [isContractStep, setIsContractStep] = useState(step.isContractStep || false)
+  const [contractConfig, setContractConfig] = useState<any>(step.contractConfig || {
+    templateUrl: '',
+    contractTitle: 'Internship Contract'
   })
 
   const handleQrUploadComplete = (doc: any) => {
@@ -148,7 +156,9 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
       amount,
       gstPercentage,
       discountPercentage,
-      paymentConfig 
+      paymentConfig,
+      isContractStep,
+      contractConfig
     })
   }
 
@@ -228,11 +238,35 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
                   checked={isPaymentStep} 
                   onChange={(e) => {
                     setIsPaymentStep(e.target.checked)
-                    if (e.target.checked) setIsInterviewStep(false)
+                    if (e.target.checked) { setIsInterviewStep(false); setIsContractStep(false); }
                   }}
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-emerald-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-500/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-emerald-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+          </div>
+
+          <div className="p-4 bg-amber-50 rounded-xl border border-amber-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileText className="w-6 h-6 text-amber-600" />
+              <div>
+                <p className="font-bold text-amber-900">Is this a Contract Step?</p>
+                <p className="text-xs text-amber-700">Enables dynamic .docx contract generation and signing interface.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                  type="checkbox" 
+                  checked={isContractStep} 
+                  onChange={(e) => {
+                    setIsContractStep(e.target.checked)
+                    if (e.target.checked) { setIsInterviewStep(false); setIsPaymentStep(false); }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-amber-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-500/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-amber-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
               </label>
             </div>
           </div>
@@ -363,6 +397,222 @@ export function StepEditor({ step, onSave, onCancel }: StepEditorProps) {
             documentType="payment_qr"
             documentName="Payment QR Image"
           />
+        </Card>
+      ) : isContractStep ? (
+        <Card className="p-8 border-2 border-amber-500/20 shadow-sm space-y-6">
+          <h3 className="text-xl font-bold text-amber-900 flex items-center gap-2">
+            <FileText className="w-5 h-5 text-amber-600" />
+            Contract Configuration
+          </h3>
+          <div className="grid gap-6">
+            <div className="space-y-2">
+              <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">Contract Document Title</label>
+              <Input 
+                value={contractConfig.contractTitle || ''} 
+                onChange={(e) => setContractConfig({...contractConfig, contractTitle: e.target.value})} 
+                className="bg-background border-2 h-11 focus:border-amber-500"
+                placeholder="e.g. Internship Contract Agreement"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground ml-1">
+                  Template Document (.docx) URL
+                </label>
+                <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setIsTemplateUploadOpen(true)}>
+                  <Upload className="w-4 h-4" />
+                  Upload Template
+                </Button>
+              </div>
+              <Input 
+                value={contractConfig.templateUrl || ''} 
+                onChange={(e) => setContractConfig({...contractConfig, templateUrl: e.target.value})} 
+                className="bg-background border-2 h-11 focus:border-amber-500"
+                placeholder="https://example.com/contract-template.docx"
+              />
+              <p className="text-xs text-muted-foreground ml-1 mt-2">
+                This template should contain tags like <code className="bg-muted px-1 py-0.5 rounded text-amber-700">{`{firstName}`}</code>, <code className="bg-muted px-1 py-0.5 rounded text-amber-700">{`{lastName}`}</code>, <code className="bg-muted px-1 py-0.5 rounded text-amber-700">{`{collegeName}`}</code> which will be replaced automatically.
+              </p>
+            </div>
+          </div>
+          
+          <UploadPopup
+            isOpen={isTemplateUploadOpen}
+            onClose={() => setIsTemplateUploadOpen(false)}
+            onUploadComplete={(doc: any) => {
+              const uploadedUrl = doc.url || doc.data?.url || ''
+              if (uploadedUrl) {
+                setContractConfig((prev: any) => ({ ...prev, templateUrl: uploadedUrl }))
+              }
+            }}
+            token={(session as any)?.backendToken || ''}
+            documentType="contract_template"
+            documentName="Contract Template (.docx)"
+          />
+
+          <div className="pt-6 border-t border-border space-y-4">
+            <h4 className="font-semibold text-foreground">Additional Documents</h4>
+            <p className="text-sm text-muted-foreground">
+              If the user needs to upload additional documents along with the signed contract (e.g. Bank Details, Parent Consent), you can add them below as <strong>File Upload</strong> fields. The contract download and upload UI is handled automatically above these fields.
+            </p>
+            
+            <Button onClick={handleAddSection} variant="outline" className="border-2 border-dashed border-primary/30 hover:border-primary hover:bg-primary/5 text-primary gap-2 w-full mt-2">
+              <Plus className="w-4 h-4" />
+              Add Extra Form Fields / Document Uploads
+            </Button>
+          </div>
+
+          {sections.length > 0 && (
+            <div className="space-y-6 mt-6">
+              {sections.map((section) => (
+                <div key={section.id} className="space-y-4 group">
+                  <Card className="overflow-hidden border-2 border-primary/20 shadow-md">
+                    <div className="bg-primary/5 p-4 flex items-center justify-between border-b border-primary/10">
+                      <div className="flex items-center gap-3 flex-1">
+                        <GripVertical className="w-5 h-5 text-primary/40 cursor-grab" />
+                        {section.id === 'default' ? (
+                          <h4 className="font-bold text-primary">{section.name}</h4>
+                        ) : (
+                          <Input 
+                            value={section.name} 
+                            onChange={(e) => handleUpdateField(section.id, { name: e.target.value })}
+                            className="bg-transparent border-none font-bold text-primary p-0 h-auto focus-visible:ring-0 text-lg max-w-sm"
+                          />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1 mr-4">
+                          {FIELD_TYPES.map(type => (
+                            <Button
+                              key={type.value}
+                              variant="ghost"
+                              size="icon"
+                              title={`Add ${type.label}`}
+                              onClick={() => handleAddField(section.id, type.value)}
+                              className="w-8 h-8 rounded-full hover:bg-primary/10 hover:text-primary transition-all"
+                            >
+                              <type.icon className="w-4 h-4" />
+                            </Button>
+                          ))}
+                        </div>
+                        {section.id !== 'default' && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleDeleteField(section.id)}
+                            className="text-muted-foreground hover:text-red-600 h-8 w-8"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="p-6 space-y-4 min-h-[50px]">
+                      {section.fields.length === 0 ? (
+                        <p className="text-center text-sm text-muted-foreground py-8 border-2 border-dashed border-muted/50 rounded-xl">
+                          No fields in this section. Use the icons above to add inputs.
+                        </p>
+                      ) : (
+                        <div className="grid md:grid-cols-2 gap-4">
+                          {section.fields.map(field => (
+                            <Card key={field.id} className={`p-4 transition-all duration-300 ${editingFieldId === field.id ? 'ring-2 ring-primary bg-primary/5 shadow-lg scale-[1.01]' : 'hover:border-primary/40 hover:bg-accent/5'}`}>
+                              {editingFieldId === field.id ? (
+                                <div className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary px-2 py-1 bg-primary/10 rounded-full">
+                                      Configuring {field.type}
+                                    </span>
+                                    <Button variant="ghost" size="sm" onClick={() => setEditingFieldId(null)} className="h-6 w-6 p-0 rounded-full">
+                                      <CheckCircle className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-3">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-muted-foreground ml-1">LABEL</label>
+                                      <Input 
+                                        value={field.name} 
+                                        onChange={(e) => handleUpdateField(field.id, { name: e.target.value })}
+                                        className="h-9 bg-background"
+                                        placeholder="Field label..."
+                                      />
+                                    </div>
+                                    <div className="flex items-center gap-4 pt-1">
+                                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input 
+                                          type="checkbox" 
+                                          checked={field.required} 
+                                          onChange={(e) => handleUpdateField(field.id, { required: e.target.checked })}
+                                          className="w-4 h-4 accent-primary rounded"
+                                        />
+                                        <span className="text-xs font-bold text-foreground">Required</span>
+                                      </label>
+                                    </div>
+                                    {field.type === 'select' && (
+                                      <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-muted-foreground ml-1">OPTIONS (COMMA SEPARATED)</label>
+                                        <Input 
+                                          value={field.options?.join(', ') || ''} 
+                                          onChange={(e) => handleUpdateField(field.id, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                                          className="h-9 bg-background"
+                                          placeholder="Opt 1, Opt 2, Opt 3..."
+                                        />
+                                      </div>
+                                    )}
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-muted-foreground ml-1">PLACEHOLDER</label>
+                                      <Input 
+                                        value={field.placeholder || ''} 
+                                        onChange={(e) => handleUpdateField(field.id, { placeholder: e.target.value })}
+                                        className="h-9 bg-background"
+                                        placeholder="Hint text..."
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="p-2 bg-secondary rounded-lg text-primary">
+                                      {FIELD_TYPES.find(t => t.value === field.type)?.icon && (
+                                        <div className="w-4 h-4">
+                                          {/* @ts-ignore */}
+                                          {(() => {
+                                            const Icon = FIELD_TYPES.find(t => t.value === field.type)?.icon
+                                            return <Icon className="w-full h-full" />
+                                          })()}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="font-bold text-sm text-foreground truncate">{field.name}</p>
+                                      <div className="flex gap-2 mt-1">
+                                        <span className="text-[9px] font-bold uppercase text-muted-foreground tracking-tighter">{field.type}</span>
+                                        {field.required && <span className="text-[9px] font-bold uppercase text-red-500 tracking-tighter">Required</span>}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon" onClick={() => setEditingFieldId(field.id)} className="h-8 w-8">
+                                      <Settings2 className="w-4 h-4 text-muted-foreground hover:text-primary" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDeleteField(field.id)} className="h-8 w-8 hover:text-red-600">
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       ) : !isInterviewStep ? (
         <div className="space-y-8">

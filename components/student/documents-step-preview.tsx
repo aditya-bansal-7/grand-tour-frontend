@@ -234,8 +234,7 @@ export function DocumentsStepPreview({ pageContent, uploadedDocs = {}, onUpload 
                           {status === 'APPROVED' ? 'Your document has been verified and approved.' : 'Your document is currently under review.'}
                         </p>
                       </div>
-                      <div className="flex justify-end w-full mt-2">
-                        {/* Optional: Allow viewing the document if uploadedDocs has the URL */}
+                      <div className="flex flex-wrap items-center justify-end gap-2 w-full mt-2">
                         {uploadedDocs[block.fieldKey]?.url && (
                           <Button
                             variant="outline"
@@ -246,6 +245,13 @@ export function DocumentsStepPreview({ pageContent, uploadedDocs = {}, onUpload 
                             View Document
                           </Button>
                         )}
+                        <Button
+                          onClick={() => onUpload?.(block.fieldKey, block.label)}
+                          className="bg-[#F5F5F5] hover:bg-[#E8E8E8] text-[#1A1A1A] font-bold rounded-full px-6 h-10 gap-2"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Re-select Document
+                        </Button>
                       </div>
                     </div>
                   )}

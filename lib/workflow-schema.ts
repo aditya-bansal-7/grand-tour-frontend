@@ -63,6 +63,13 @@ export interface WorkflowStep {
       dueDate?: string
     }>
   }
+
+  // Contract configuration
+  isContractStep?: boolean
+  contractConfig?: {
+    templateUrl?: string
+    contractTitle?: string
+  }
 }
 
 export interface Workflow {

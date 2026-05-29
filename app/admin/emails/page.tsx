@@ -11,11 +11,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { 
   Mail, 
   Edit, 
-  RefreshCw, 
   CheckCircle2, 
   Loader2,
-  AlertCircle,
-  Code
+  AlertCircle
 } from 'lucide-react'
 import { emailTemplateService, EmailTemplate } from '@/lib/services/email-template.service'
 import { toast } from 'sonner'
@@ -52,19 +50,6 @@ export default function EmailTemplatesPage() {
     }
   }
 
-  const handleSeedTemplates = async () => {
-    setLoading(true)
-    try {
-      await emailTemplateService.seedTemplates()
-      toast.success('Default templates seeded successfully')
-      fetchTemplates()
-    } catch (error) {
-      toast.error('Failed to seed templates')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleEditClick = (template: EmailTemplate) => {
     setEditingTemplate({ ...template })
     setIsEditDialogOpen(true)
@@ -82,7 +67,7 @@ export default function EmailTemplatesPage() {
       toast.success('Template updated successfully')
       setIsEditDialogOpen(false)
       fetchTemplates()
-    } catch (error) {
+    } catch {
       toast.error('Failed to update template')
     } finally {
       setSaving(false)
@@ -98,18 +83,7 @@ export default function EmailTemplatesPage() {
       <main className="flex-1 p-3 md:p-4 lg:p-5 lg:ml-64">
         <Header
           title="Email Templates"
-          description="Manage and customize automated email notifications"
-          actions={
-            <Button 
-              variant="outline" 
-              onClick={handleSeedTemplates}
-              disabled={loading}
-              className="flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Restore Defaults
-            </Button>
-          }
+          description="Edit the HTML templates assigned to automated actions. These templates are system-managed and cannot be added here."
         />
 
         <div className="mt-8 space-y-6">
@@ -122,11 +96,7 @@ export default function EmailTemplatesPage() {
             <Card className="p-12 text-center border-dashed bg-secondary/10">
               <Mail className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-20" />
               <h3 className="text-xl font-semibold">No templates found</h3>
-              <p className="text-muted-foreground mb-6">You haven't set up any email templates yet.</p>
-              <Button onClick={handleSeedTemplates}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Seed Default Templates
-              </Button>
+              <p className="text-muted-foreground">The system templates have not been initialized yet.</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-4">

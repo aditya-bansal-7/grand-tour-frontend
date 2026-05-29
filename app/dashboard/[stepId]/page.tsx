@@ -17,6 +17,7 @@ import { useSession } from 'next-auth/react'
 import { paymentService } from '@/lib/services/api.service'
 import { Input } from '@/components/ui/input'
 import { ProfileBuilderStep } from '@/components/student/profile-builder-step'
+import { ContractStep } from '@/components/student/contract-step'
 
 export default function DynamicStepPage({ params }: { params: Promise<{ stepId: string }> }) {
   const router = useRouter()
@@ -509,6 +510,13 @@ export default function DynamicStepPage({ params }: { params: Promise<{ stepId: 
 
             </Card>
           </div>
+        ) : currentStepConfig.isContractStep ? (
+          <ContractStep
+            application={application}
+            currentStepConfig={currentStepConfig}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+          />
         ) : (stepId === 'application' || currentStepConfig.name.toLowerCase().includes('profile')) ? (
           <ProfileBuilderStep 
             application={application}

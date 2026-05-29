@@ -21,22 +21,8 @@ export const emailTemplateService = {
     return response.data;
   },
 
-  createTemplate: async (data: Partial<EmailTemplate>): Promise<EmailTemplate> => {
-    const response = await api.post('/api/email-templates', data);
-    return response.data;
-  },
-
   updateTemplate: async (id: string, data: Partial<EmailTemplate>): Promise<EmailTemplate> => {
     const response = await api.put(`/api/email-templates/${id}`, data);
-    return response.data;
-  },
-
-  deleteTemplate: async (id: string): Promise<void> => {
-    await api.delete(`/api/email-templates/${id}`);
-  },
-
-  seedTemplates: async (): Promise<{ message: string }> => {
-    const response = await api.post('/api/email-templates/seed');
     return response.data;
   }
 };

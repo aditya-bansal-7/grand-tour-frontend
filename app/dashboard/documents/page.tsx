@@ -84,9 +84,10 @@ export default function DocumentsPage() {
   const allRequiredDocsUploaded = keysToCheck.every((key: string) => 
     uploadedDocs[key] && uploadedDocs[key].status !== 'REJECTED'
   )
+  const canContinue = allRequiredDocsUploaded && !hasRejectedDocuments
 
   const handleContinue = async () => {
-    if (!allRequiredDocsUploaded) {
+    if (!canContinue) {
       toast.error('All required documents must be uploaded before continuing to the next stage.')
       return
     }
@@ -139,7 +140,7 @@ export default function DocumentsPage() {
           ) : allUploadedDocsApproved ? (
             <p className="font-semibold">All uploaded documents are approved. You can now continue to the next stage.</p>
           ) : (
-            <p className="font-semibold">All required documents uploaded successfully. You can now continue to the next stage.</p>
+            <p className="font-semibold">Your documents are uploaded and under review. You can continue to the next stage.</p>
           )}
         </div>
 
@@ -162,7 +163,7 @@ export default function DocumentsPage() {
             </Button>
             <Button 
               onClick={handleContinue}
-              disabled={submitting || !allUploadedDocsApproved}
+              disabled={submitting || !canContinue}
               className="bg-[#C6F16D] hover:bg-[#b5e359] text-[#1A1A1A] font-bold h-12 px-8 rounded-full tracking-wide gap-2 disabled:opacity-50"
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
